@@ -20,6 +20,8 @@ import {
   Eye,
   Save,
   Calendar,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   SchoolSettings,
@@ -35,6 +37,8 @@ import {
   saveRuntimeSupabaseCredentials,
   clearRuntimeSupabaseCredentials,
   syncLocalDataToSupabase,
+  checkSupabaseHealth,
+  SupabaseHealthStatus,
 } from '../lib/supabase';
 
 interface AdminDashboardModalProps {
@@ -50,18 +54,20 @@ interface AdminDashboardModalProps {
   events: SchoolEvent[];
   gallery: GalleryItem[];
   enquiries: AdmissionEnquiry[];
-  onSaveSettings: (newSettings: SchoolSettings) => Promise<void>;
-  onSaveTicker: (item: TickerItem) => Promise<void>;
-  onDeleteTicker: (id: string) => Promise<void>;
-  onSaveNotice: (notice: NoticeItem) => Promise<void>;
-  onDeleteNotice: (id: string) => Promise<void>;
-  onSaveEvent: (event: SchoolEvent) => Promise<void>;
-  onDeleteEvent: (id: string) => Promise<void>;
-  onSaveGallery: (item: GalleryItem) => Promise<void>;
-  onDeleteGallery: (id: string) => Promise<void>;
-  onUpdateEnquiryStatus: (id: string, status: AdmissionEnquiry['status']) => Promise<void>;
-  onDeleteEnquiry: (id: string) => Promise<void>;
+  onSaveSettings: (newSettings: SchoolSettings) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onSaveTicker: (item: TickerItem) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onDeleteTicker: (id: string) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onSaveNotice: (notice: NoticeItem) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onDeleteNotice: (id: string) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onSaveEvent: (event: SchoolEvent) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onDeleteEvent: (id: string) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onSaveGallery: (item: GalleryItem) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onDeleteGallery: (id: string) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onUpdateEnquiryStatus: (id: string, status: AdmissionEnquiry['status']) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
+  onDeleteEnquiry: (id: string) => Promise<{ syncedToSupabase: boolean; error?: string } | void>;
   onRefreshData: () => Promise<void>;
+  dbHealth?: SupabaseHealthStatus | null;
+  onCheckDbHealth?: () => Promise<SupabaseHealthStatus>;
 }
 
 const DEFAULT_PASSCODE = (import.meta.env.VITE_ADMIN_PASSCODE as string) || 'UMA@2026';
@@ -91,6 +97,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onUpdateEnquiryStatus,
   onDeleteEnquiry,
   onRefreshData,
+  dbHealth,
+  onCheckDbHealth,
 }) => {
   const [passcodeInput, setPasscodeInput] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -112,6 +120,33 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
   const [savingStatus, setSavingStatus] = useState<string>('');
   const [uploadingField, setUploadingField] = useState<string>('');
+
+  // Live Supabase Health & Diagnostics State
+  const [localHealth, setLocalHealth] = useState<SupabaseHealthStatus | null>(dbHealth || null);
+  const [checkingHealth, setCheckingHealth] = useState(false);
+
+  const runHealthCheck = async () => {
+    setCheckingHealth(true);
+    try {
+      const status = onCheckDbHealth ? await onCheckDbHealth() : await checkSupabaseHealth();
+      setLocalHealth(status);
+      return status;
+    } finally {
+      setCheckingHealth(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isOpen) {
+      runHealthCheck();
+    }
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    if (dbHealth) {
+      setLocalHealth(dbHealth);
+    }
+  }, [dbHealth]);
 
   // New Ticker state
   const [newTickerTag, setNewTickerTag] = useState('ADMISSIONS OPEN');
@@ -160,6 +195,17 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setTimeout(() => setSavingStatus(''), 3500);
   };
 
+  const showResultToast = (
+    result: { syncedToSupabase: boolean; error?: string } | void,
+    successMsg: string
+  ) => {
+    if (result && !result.syncedToSupabase) {
+      showToast(`⚠️ Saved locally! DB: ${result.error || 'Database unreachable'}`);
+    } else {
+      showToast(successMsg);
+    }
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (passcodeInput.trim() === DEFAULT_PASSCODE || passcodeInput.trim() === 'admin123') {
@@ -192,14 +238,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
   const handleSaveSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSaveSettings(formSettings);
-    showToast('Changes saved & published live!');
+    const res = await onSaveSettings(formSettings);
+    showResultToast(res, 'Changes saved & published live!');
   };
 
   const handleAddTicker = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTickerText.trim()) return;
-    await onSaveTicker({
+    const res = await onSaveTicker({
       id: `ticker-${Date.now()}`,
       tag: newTickerTag.trim() || 'UPDATE',
       text: newTickerText.trim(),
@@ -208,13 +254,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
       sort_order: tickerItems.length + 1,
     });
     setNewTickerText('');
-    showToast('Important news ticker added!');
+    showResultToast(res, 'Important news ticker added!');
+  };
+
+  const handleDeleteTicker = async (id: string) => {
+    const res = await onDeleteTicker(id);
+    showResultToast(res, 'Ticker item deleted');
   };
 
   const handleAddNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!noticeTitle.trim() || !noticeContent.trim()) return;
-    await onSaveNotice({
+    const res = await onSaveNotice({
       id: `notice-${Date.now()}`,
       title: noticeTitle.trim(),
       date: noticeDate,
@@ -227,13 +278,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setNoticeTitle('');
     setNoticeContent('');
     setNoticeAttachmentUrl('');
-    showToast('Notice published to Notice Board!');
+    showResultToast(res, 'Notice published to Notice Board!');
+  };
+
+  const handleDeleteNotice = async (id: string) => {
+    const res = await onDeleteNotice(id);
+    showResultToast(res, 'Notice deleted');
   };
 
   const handleAddGallery = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!galTitle.trim() || !galMediaUrl.trim()) return;
-    await onSaveGallery({
+    const res = await onSaveGallery({
       id: `gal-${Date.now()}`,
       title: galTitle.trim(),
       description: galDesc.trim(),
@@ -247,13 +303,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setGalDesc('');
     setGalMediaUrl('');
     setGalThumbUrl('');
-    showToast(`${galMediaType === 'video' ? 'Video' : 'Picture'} added to Gallery!`);
+    showResultToast(res, `${galMediaType === 'video' ? 'Video' : 'Picture'} added to Gallery!`);
+  };
+
+  const handleDeleteGallery = async (id: string) => {
+    const res = await onDeleteGallery(id);
+    showResultToast(res, 'Gallery item deleted');
   };
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventTitle.trim() || !eventDescription.trim()) return;
-    await onSaveEvent({
+    const res = await onSaveEvent({
       id: `ev-${Date.now()}`,
       title: eventTitle.trim(),
       date: eventDate,
@@ -265,7 +326,22 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setEventTitle('');
     setEventImageUrl('/images/students_event.jpg');
     setEventDescription('');
-    showToast('School event added successfully!');
+    showResultToast(res, 'School event added successfully!');
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    const res = await onDeleteEvent(id);
+    showResultToast(res, 'Event deleted');
+  };
+
+  const handleUpdateStatus = async (id: string, status: AdmissionEnquiry['status']) => {
+    const res = await onUpdateEnquiryStatus(id, status);
+    showResultToast(res, `Status updated to ${status}`);
+  };
+
+  const handleDeleteEnquiry = async (id: string) => {
+    const res = await onDeleteEnquiry(id);
+    showResultToast(res, 'Enquiry deleted');
   };
 
   const exportEnquiriesToCSV = () => {
@@ -329,7 +405,35 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Live Database Connection Pill */}
+            {localHealth && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('cloud')}
+                className={`hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                  localHealth.status === 'connected'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                    : localHealth.status === 'paused_or_unreachable'
+                    ? 'bg-rose-500/25 text-rose-300 border-rose-500/40 hover:bg-rose-500/35 animate-pulse'
+                    : localHealth.status === 'tables_missing'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                    : 'bg-slate-500/20 text-slate-300 border-slate-500/40 hover:bg-slate-500/30'
+                }`}
+                title="Click to view Database status & configuration"
+              >
+                <span>
+                  {localHealth.status === 'connected'
+                    ? '🟢 Supabase DB Live'
+                    : localHealth.status === 'paused_or_unreachable'
+                    ? '🔴 Supabase Unreachable'
+                    : localHealth.status === 'tables_missing'
+                    ? '🟡 DB Tables Missing'
+                    : '⚪ Local Mode'}
+                </span>
+              </button>
+            )}
+
             {savingStatus && (
               <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-slate-950 text-xs font-extrabold animate-pulse">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -374,7 +478,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   required
                   value={passcodeInput}
                   onChange={(e) => setPasscodeInput(e.target.value)}
-                  placeholder="Enter Admin Passcode (Default: UMA@2026)"
+                  // placeholder="Enter Admin Passcode (Default: UMA@2026)"
                   className="w-full px-4 py-3 rounded-xl border border-slate-300 text-center font-bold tracking-wider text-slate-900 focus:ring-2 focus:ring-amber-500 outline-none"
                 />
                 {loginError && (
@@ -390,7 +494,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
               </button>
 
               <div className="p-3 rounded-xl bg-slate-100 text-slate-600 text-xs">
-                Default Passcode: <code className="font-bold text-slate-900">UMA@2026</code> (can be customized via <code className="text-slate-800">VITE_ADMIN_PASSCODE</code> in Vercel/Supabase environment variables).
+                Default Passcode: <code className="font-bold text-slate-900"> </code> (can be customized via <code className="text-slate-800">VITE_ADMIN_PASSCODE</code> in Vercel/Supabase environment variables).
               </div>
             </form>
           </div>
@@ -607,7 +711,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                           </div>
                         </div>
                         <button
-                          onClick={() => onDeleteTicker(item.id)}
+                          onClick={() => handleDeleteTicker(item.id)}
                           className="self-end sm:self-auto p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                           title="Delete Ticker Item"
                         >
@@ -716,7 +820,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                                   <select
                                     value={enq.status}
                                     onChange={(e) =>
-                                      onUpdateEnquiryStatus(
+                                      handleUpdateStatus(
                                         enq.id,
                                         e.target.value as AdmissionEnquiry['status']
                                       )
@@ -731,7 +835,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                                 </td>
                                 <td className="p-3 text-right">
                                   <button
-                                    onClick={() => onDeleteEnquiry(enq.id)}
+                                    onClick={() => handleDeleteEnquiry(enq.id)}
                                     className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 cursor-pointer"
                                     title="Delete Enquiry"
                                   >
@@ -1077,7 +1181,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             {n.is_pinned ? 'Unpin' : 'Pin'}
                           </button>
                           <button
-                            onClick={() => onDeleteNotice(n.id)}
+                            onClick={() => handleDeleteNotice(n.id)}
                             className="p-2 rounded-lg text-red-600 hover:bg-red-50 cursor-pointer"
                             title="Delete Notice"
                           >
@@ -1274,7 +1378,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
                               <span className="text-[11px] text-slate-400">ID: {ev.id}</span>
                               <button
-                                onClick={() => onDeleteEvent(ev.id)}
+                                onClick={() => handleDeleteEvent(ev.id)}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 text-xs font-bold transition-colors cursor-pointer"
                                 title="Delete Event"
                               >
@@ -1527,7 +1631,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                               </div>
                             </div>
                             <button
-                              onClick={() => onDeleteGallery(item.id)}
+                              onClick={() => handleDeleteGallery(item.id)}
                               className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 shrink-0 cursor-pointer"
                               title="Delete Gallery Item"
                             >
@@ -1939,27 +2043,100 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     </p>
                   </div>
 
+                  {/* Live Connection Diagnostics Card */}
                   <div
                     className={`p-5 rounded-2xl border ${
-                      isSupabaseConfigured()
+                      localHealth?.status === 'connected'
                         ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
-                        : 'bg-amber-50 border-amber-300 text-amber-950'
+                        : localHealth?.status === 'tables_missing'
+                        ? 'bg-amber-50 border-amber-300 text-amber-950'
+                        : localHealth?.status === 'paused_or_unreachable'
+                        ? 'bg-rose-50 border-rose-300 text-rose-950'
+                        : 'bg-slate-50 border-slate-300 text-slate-800'
                     }`}
                   >
-                    <div className="font-bold text-sm flex items-center gap-2">
-                      <Cloud className="w-5 h-5" />
-                      <span>
-                        Current Status:{' '}
-                        {isSupabaseConfigured()
-                          ? '🟢 Connected to Supabase Cloud'
-                          : '🟡 Local Preview Mode (Changes saved in browser until Supabase keys are added)'}
-                      </span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="font-bold text-sm sm:text-base flex items-center gap-2">
+                        <Cloud className="w-5 h-5 shrink-0" />
+                        <span>
+                          {localHealth?.status === 'connected'
+                            ? '🟢 Supabase PostgreSQL Database: CONNECTED & LIVE'
+                            : localHealth?.status === 'tables_missing'
+                            ? '🟡 Supabase Connected, but Tables Missing'
+                            : localHealth?.status === 'paused_or_unreachable'
+                            ? '🔴 Supabase Database: UNREACHABLE (Project Paused / DNS ENOTFOUND)'
+                            : '⚪ Local Storage Preview Mode (Offline)'}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setCloudMsg('Testing connection to Supabase database...');
+                          const h = await runHealthCheck();
+                          if (h.status === 'connected') {
+                            setCloudMsg('🟢 Supabase connection successful! PostgreSQL database is responding.');
+                          } else if (h.status === 'tables_missing') {
+                            setCloudMsg('🟡 Supabase reachable, but tables are missing. Run supabase/schema.sql in SQL Editor.');
+                          } else if (h.status === 'paused_or_unreachable') {
+                            setCloudMsg(`🔴 Supabase unreachable: ${h.message} (${h.details || 'DNS lookup failed'})`);
+                          } else {
+                            setCloudMsg('⚪ No Supabase credentials configured.');
+                          }
+                        }}
+                        disabled={checkingHealth}
+                        className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${checkingHealth ? 'animate-spin' : ''}`} />
+                        <span>{checkingHealth ? 'Testing...' : 'Test Database Connection'}</span>
+                      </button>
                     </div>
-                    <p className="text-xs mt-1">
-                      {isSupabaseConfigured()
-                        ? 'Your website is actively reading and writing to your Supabase PostgreSQL database and Storage bucket.'
-                        : 'You can test all Admin Panel features right now! When deploying to Vercel, set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel Environment Variables, or enter them below to connect immediately.'}
+
+                    <p className="text-xs sm:text-sm mt-2 leading-relaxed">
+                      {localHealth?.status === 'connected' &&
+                        'Your website is actively connected to your Supabase PostgreSQL database and Storage bucket. All changes made in this admin panel are saved directly to the database.'}
+                      {localHealth?.status === 'tables_missing' &&
+                        'Supabase project is responding, but the required tables (school_settings, notices, gallery_items, etc.) have not been created yet.'}
+                      {localHealth?.status === 'paused_or_unreachable' &&
+                        'The Supabase server could not be reached (DNS address not found). Changes are currently saved in browser local storage as a safety fallback.'}
+                      {(!localHealth || localHealth?.status === 'unconfigured') &&
+                        'No cloud database connected. Changes are saved locally in this browser. Enter Supabase keys below to connect.'}
                     </p>
+
+                    {/* Prominent Help Box if Supabase is Paused / Unreachable */}
+                    {localHealth?.status === 'paused_or_unreachable' && (
+                      <div className="mt-4 p-4 rounded-xl bg-white/90 border border-rose-300 text-xs sm:text-sm text-slate-800 space-y-2">
+                        <div className="font-bold text-rose-900 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>Why is it using Local Storage instead of the Database?</span>
+                        </div>
+                        <p className="text-slate-700 leading-relaxed">
+                          Your current Supabase project URL <code className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-900 font-mono text-[11px] font-bold">{sbUrl}</code> cannot be resolved by DNS (<strong className="text-rose-700">getaddrinfo ENOTFOUND</strong>).
+                        </p>
+                        <div className="bg-rose-50 p-3 rounded-lg border border-rose-200">
+                          <div className="font-bold text-rose-900 mb-1">👉 How to restore in 60 seconds:</div>
+                          <ol className="list-decimal list-inside space-y-1 text-slate-700">
+                            <li>Log in to your Supabase account at <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-sky-700 underline font-bold">supabase.com/dashboard</a></li>
+                            <li>Supabase free-tier projects automatically pause when idle. Select your project and click <strong className="text-rose-900">&ldquo;Restore project&rdquo;</strong> (takes ~1-2 minutes).</li>
+                            <li>Once restored, come back here and click <strong className="text-slate-900">&ldquo;Test Database Connection&rdquo;</strong> above!</li>
+                            <li><strong>Or if you created a brand new Supabase project</strong>: paste your new Project URL and Anon Key below and click &ldquo;Save &amp; Connect Supabase&rdquo;.</li>
+                          </ol>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Help Box if Tables Missing */}
+                    {localHealth?.status === 'tables_missing' && (
+                      <div className="mt-4 p-4 rounded-xl bg-white/90 border border-amber-300 text-xs sm:text-sm text-slate-800 space-y-2">
+                        <div className="font-bold text-amber-900 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>Database Tables Missing</span>
+                        </div>
+                        <p className="text-slate-700 leading-relaxed">
+                          Open your Supabase project dashboard &rarr; <strong>SQL Editor</strong> &rarr; <strong>New Query</strong>, paste the contents of <code className="font-mono text-amber-900 bg-amber-100 px-1 py-0.5 rounded">supabase/schema.sql</code>, and click <strong>Run</strong>.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
@@ -1998,10 +2175,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                         type="button"
                         onClick={async () => {
                           saveRuntimeSupabaseCredentials(sbUrl, sbKey);
-                          await onRefreshData();
-                          setCloudMsg('Supabase credentials saved! Refreshing data...');
+                          setCloudMsg('Testing connection to Supabase...');
+                          const h = await runHealthCheck();
+                          if (h.status === 'connected') {
+                            await onRefreshData();
+                            setCloudMsg('🟢 Supabase credentials saved and verified! Connected to live database.');
+                          } else if (h.status === 'tables_missing') {
+                            setCloudMsg('🟡 Connected to Supabase, but tables are missing. Please run supabase/schema.sql in SQL Editor.');
+                          } else {
+                            setCloudMsg(`🔴 Could not connect: ${h.message} (${h.details || ''})`);
+                          }
                         }}
-                        className="px-5 py-2.5 rounded-xl bg-[#0a1931] text-amber-300 font-bold text-xs sm:text-sm cursor-pointer"
+                        className="px-5 py-2.5 rounded-xl bg-[#0a1931] text-amber-300 font-bold text-xs sm:text-sm shadow cursor-pointer hover:bg-[#132d59]"
                       >
                         Save &amp; Connect Supabase
                       </button>
@@ -2009,11 +2194,15 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       <button
                         type="button"
                         onClick={async () => {
+                          setCloudMsg('Pushing local data to Supabase database tables...');
                           const res = await syncLocalDataToSupabase();
                           setCloudMsg(res.message);
-                          if (res.ok) await onRefreshData();
+                          if (res.ok) {
+                            await onRefreshData();
+                            await runHealthCheck();
+                          }
                         }}
-                        className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs sm:text-sm cursor-pointer"
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs sm:text-sm shadow cursor-pointer hover:bg-emerald-700"
                       >
                         Push Current Data to Supabase Tables
                       </button>
@@ -2026,9 +2215,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             setSbUrl('');
                             setSbKey('');
                             await onRefreshData();
-                            setCloudMsg('Cleared runtime keys.');
+                            await runHealthCheck();
+                            setCloudMsg('Cleared runtime Supabase keys. Switched to local preview mode.');
                           }}
-                          className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-semibold text-xs cursor-pointer"
+                          className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-semibold text-xs cursor-pointer hover:bg-slate-100"
                         >
                           Disconnect
                         </button>
@@ -2036,7 +2226,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     </div>
 
                     {cloudMsg && (
-                      <div className="p-3 rounded-xl bg-blue-50 text-blue-900 text-xs font-semibold">
+                      <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 text-xs font-semibold leading-relaxed">
                         {cloudMsg}
                       </div>
                     )}

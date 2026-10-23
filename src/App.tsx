@@ -68,6 +68,8 @@ import {
   submitAdmissionEnquiry,
   updateEnquiryStatusById,
   deleteEnquiryById,
+  checkSupabaseHealth,
+  SupabaseHealthStatus,
 } from './lib/supabase';
 import { HeaderAndTicker } from './components/HeaderAndTicker';
 import { AdmissionPopupModal } from './components/AdmissionPopupModal';
@@ -129,6 +131,7 @@ export function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
     return sessionStorage.getItem('uma_admin_logged_in') === 'true';
   });
+  const [dbHealth, setDbHealth] = useState<SupabaseHealthStatus | null>(null);
 
   const loadData = async () => {
     const data = await fetchAllSchoolData();
@@ -140,6 +143,17 @@ export function App() {
     }
     setGallery(data.gallery);
     setEnquiries(data.enquiries);
+    if (data.connectionStatus) {
+      setDbHealth({
+        status: data.connectionStatus,
+        message:
+          data.errorMessage ||
+          (data.source === 'supabase'
+            ? 'Connected to Supabase PostgreSQL database'
+            : 'Supabase unreachable or not configured'),
+        checkedAt: new Date().toISOString(),
+      });
+    }
     return data;
   };
 
@@ -1063,8 +1077,8 @@ export function App() {
         onClose={() => setAdmissionPopupOpen(false)}
         settings={settings}
         onSubmitEnquiry={async (enquiryData) => {
-          const updated = await submitAdmissionEnquiry(enquiryData, enquiries);
-          setEnquiries(updated);
+          const res = await submitAdmissionEnquiry(enquiryData, enquiries);
+          setEnquiries(res.data);
         }}
       />
 
@@ -1088,49 +1102,66 @@ export function App() {
         events={events}
         gallery={gallery}
         enquiries={enquiries}
+        dbHealth={dbHealth}
+        onCheckDbHealth={async () => {
+          const status = await checkSupabaseHealth();
+          setDbHealth(status);
+          return status;
+        }}
         onSaveSettings={async (newSettings) => {
-          const saved = await updateSchoolSettings(newSettings);
-          setSettings(saved);
+          const res = await updateSchoolSettings(newSettings);
+          setSettings(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onSaveTicker={async (item) => {
-          const updated = await addOrUpdateTickerItem(item, tickerItems);
-          setTickerItems(updated);
+          const res = await addOrUpdateTickerItem(item, tickerItems);
+          setTickerItems(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onDeleteTicker={async (id) => {
-          const updated = await deleteTickerItemById(id, tickerItems);
-          setTickerItems(updated);
+          const res = await deleteTickerItemById(id, tickerItems);
+          setTickerItems(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onSaveNotice={async (notice) => {
-          const updated = await addOrUpdateNotice(notice, notices);
-          setNotices(updated);
+          const res = await addOrUpdateNotice(notice, notices);
+          setNotices(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onDeleteNotice={async (id) => {
-          const updated = await deleteNoticeById(id, notices);
-          setNotices(updated);
+          const res = await deleteNoticeById(id, notices);
+          setNotices(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onSaveEvent={async (event) => {
-          const updated = await addOrUpdateEvent(event, events);
-          setEvents(updated);
+          const res = await addOrUpdateEvent(event, events);
+          setEvents(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onDeleteEvent={async (id) => {
-          const updated = await deleteEventById(id, events);
-          setEvents(updated);
+          const res = await deleteEventById(id, events);
+          setEvents(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onSaveGallery={async (item) => {
-          const updated = await addOrUpdateGalleryItem(item, gallery);
-          setGallery(updated);
+          const res = await addOrUpdateGalleryItem(item, gallery);
+          setGallery(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onDeleteGallery={async (id) => {
-          const updated = await deleteGalleryItemById(id, gallery);
-          setGallery(updated);
+          const res = await deleteGalleryItemById(id, gallery);
+          setGallery(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onUpdateEnquiryStatus={async (id, status) => {
-          const updated = await updateEnquiryStatusById(id, status, enquiries);
-          setEnquiries(updated);
+          const res = await updateEnquiryStatusById(id, status, enquiries);
+          setEnquiries(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onDeleteEnquiry={async (id) => {
-          const updated = await deleteEnquiryById(id, enquiries);
-          setEnquiries(updated);
+          const res = await deleteEnquiryById(id, enquiries);
+          setEnquiries(res.data);
+          return { syncedToSupabase: res.syncedToSupabase, error: res.error };
         }}
         onRefreshData={async () => {
           await loadData();
