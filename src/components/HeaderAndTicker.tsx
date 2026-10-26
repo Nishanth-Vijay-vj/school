@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  Phone,
-  MapPin,
-  Shield,
   Menu,
   X,
-  GraduationCap,
+  ChevronDown,
   Megaphone,
   ArrowRight,
+  Shield,
   FileText,
 } from 'lucide-react';
 import { SchoolSettings, TickerItem } from '../types/school';
@@ -24,6 +22,19 @@ interface HeaderAndTickerProps {
   isAdminLoggedIn: boolean;
 }
 
+interface NavItem {
+  id: string;
+  label: string;
+  href?: string;
+  action?: () => void;
+  children?: {
+    id: string;
+    label: string;
+    href?: string;
+    action?: () => void;
+  }[];
+}
+
 export const HeaderAndTicker: React.FC<HeaderAndTickerProps> = ({
   settings,
   tickerItems,
@@ -36,216 +47,381 @@ export const HeaderAndTicker: React.FC<HeaderAndTickerProps> = ({
   isAdminLoggedIn,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [mobileExpandedSection, setMobileExpandedSection] = useState<string | null>(null);
+  const dropdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeTickers = tickerItems.filter((t) => t.is_active);
 
-  const navLinks = [
+  // Close mobile drawer on resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleNavClick = (sectionId: string, customAction?: () => void) => {
+    if (customAction) {
+      customAction();
+    } else if (onNavigate) {
+      onNavigate(sectionId);
+    } else {
+      const el = document.getElementById(sectionId);
+      el?.scrollIntoView({ behavior: 'smooth' });
+    }
+    setActiveDropdown(null);
+    setMobileMenuOpen(false);
+  };
+
+  const navItems: NavItem[] = [
     { id: 'home', label: 'Home', href: '#home' },
-    { id: 'about', label: 'About School', href: '#about' },
-    { id: 'leadership', label: 'Leadership', href: '#leadership' },
-    { id: 'academics', label: 'Academics (+1/+2)', href: '#academics' },
+    {
+      id: 'about',
+      label: 'About us',
+      children: [
+        { id: 'about', label: 'Our Story' },
+        { id: 'leadership', label: 'Thoughts of Management' },
+      ],
+    },
+    { id: 'kindergarten', label: 'Kindergarten Wing', action: () => handleNavClick('facilities') },
+    {
+      id: 'admissions',
+      label: 'Admissions',
+      children: [
+        { id: 'admissions', label: 'Admission Procedure' },
+        { id: 'online-admission', label: 'Online Admission', action: onOpenAdmissionModal },
+      ],
+    },
+    {
+      id: 'academics',
+      label: 'Academics',
+      children: [
+        { id: 'academics', label: 'Higher Secondary Streams (+1/+2)' },
+        { id: 'notices', label: 'Circulars & Notice Board' },
+      ],
+    },
+    {
+      id: 'activities',
+      label: 'Activities',
+      children: [
+        { id: 'activities', label: 'Events & Celebrations' },
+        { id: 'activities-clubs', label: 'Silambam, Yoga & Clubs', action: () => handleNavClick('activities') },
+      ],
+    },
     { id: 'facilities', label: 'Facilities', href: '#facilities' },
-    { id: 'activities', label: 'Activities & Events', href: '#activities' },
     { id: 'gallery', label: 'Gallery', href: '#gallery' },
-    { id: 'notices', label: 'Notice Board', href: '#notices' },
-    { id: 'admissions', label: 'Admissions', href: '#admissions' },
     { id: 'contact', label: 'Contact Us', href: '#contact' },
   ];
 
-  return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-xs border-b border-slate-200">
-      {/* Tier 1: Slim Mild Top Info Bar */}
-      <div className="bg-slate-100/90 text-slate-600 text-xs border-b border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <span className="inline-flex items-center gap-1.5 text-slate-700 font-medium">
-              <MapPin className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <span>Alwarcoil, Neyyoor Post, Kanyakumari District – 629802</span>
-            </span>
-            <span className="hidden md:inline text-slate-300">|</span>
-            <a
-              href={`tel:${settings.correspondent_phone.replace(/\s+/g, '')}`}
-              className="hover:text-sky-800 transition-colors inline-flex items-center gap-1 font-medium"
-            >
-              <Phone className="w-3 h-3 text-sky-700" />
-              <span>Correspondent: {settings.correspondent_phone}</span>
-            </a>
-            <a
-              href={`tel:${settings.principal_phone.replace(/\s+/g, '')}`}
-              className="hidden sm:inline-flex hover:text-sky-800 transition-colors items-center gap-1 font-medium"
-            >
-              <Phone className="w-3 h-3 text-teal-700" />
-              <span>Principal: {settings.principal_phone}</span>
-            </a>
-          </div>
+  const handleDropdownEnter = (id: string) => {
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+    }
+    setActiveDropdown(id);
+  };
 
-          <div className="flex items-center gap-2 ml-auto">
-            {enquiryCount > 0 && (
-              <button
-                onClick={onOpenAdminEnquiries || onOpenAdminModal}
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-900 hover:bg-sky-200 text-xs font-semibold transition-colors cursor-pointer"
-                title="View Submitted Admission Forms in Admin Panel"
-              >
-                <FileText className="w-3 h-3 text-sky-700" />
-                <span>Submitted Forms ({enquiryCount})</span>
-              </button>
-            )}
+  const handleDropdownLeave = () => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setActiveDropdown(null);
+    }, 150);
+  };
+
+  return (
+    <header className="sticky top-0 z-40 bg-white border-b border-[#e8edf6] shadow-xs">
+      {/* Rojavanam Single Compact Nav Row (74px on Desktop, 62px on Mobile) */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-[62px] lg:h-[74px] gap-2 lg:gap-3">
+          {/* Left Brand: School Crest + 3-line Text Block matching Rojavanam */}
+          <a
+            href="#home"
+            onClick={(e) => {
+              e.preventDefault();
+              handleNavClick('home');
+            }}
+            className="flex items-center gap-2.5 sm:gap-3 shrink-0 cursor-pointer group text-left"
+          >
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shrink-0 border border-slate-200 shadow-xs flex items-center justify-center bg-white">
+              <img
+                src={settings.logo_url || '/logo.png'}
+                alt={settings.school_name}
+                className="w-full h-full object-contain p-0.5 group-hover:scale-105 transition-transform"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/logo.png';
+                }}
+              />
+            </div>
+            <div className="flex flex-col justify-center leading-tight min-w-0">
+              <span className="text-[13px] sm:text-[15px] xl:text-[16px] font-bold text-[#13306d] tracking-tight uppercase line-clamp-1 group-hover:text-sky-800 transition-colors">
+                {settings.school_name}
+              </span>
+              <span className="text-[10px] sm:text-[11px] font-medium text-[#5f6982] hidden sm:block">
+                {settings.school_motto || 'Where Excellence Meets Innovation'}
+              </span>
+              <span className="text-[9.5px] sm:text-[10px] font-semibold text-[#dc2b2b] tracking-wide">
+                [Tamil Nadu Matric Code: 28247 | Estd. 1990]
+              </span>
+            </div>
+          </a>
+
+          {/* Center Navigation Links with Dropdowns (Desktop only) */}
+          <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5" aria-label="Main Navigation">
+            {navItems.map((item) => {
+              const hasChildren = item.children && item.children.length > 0;
+              const isActive =
+                activeSection === item.id ||
+                (hasChildren && item.children?.some((c) => c.id === activeSection));
+
+              if (hasChildren) {
+                return (
+                  <div
+                    key={item.id}
+                    className="relative"
+                    onMouseEnter={() => handleDropdownEnter(item.id)}
+                    onMouseLeave={handleDropdownLeave}
+                  >
+                    <button
+                      onClick={() => {
+                        if (activeDropdown === item.id) {
+                          setActiveDropdown(null);
+                        } else {
+                          setActiveDropdown(item.id);
+                        }
+                      }}
+                      className={`inline-flex items-center gap-1 px-2.5 xl:px-3 py-1.5 rounded-full text-[13px] xl:text-[13.5px] font-medium transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-[#13306d] text-white font-semibold'
+                          : 'text-[#13306d] hover:text-[#08183a] hover:bg-slate-100/80'
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                          activeDropdown === item.id ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {activeDropdown === item.id && (
+                      <div className="absolute left-0 top-full pt-1.5 w-56 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <div className="bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 ring-1 ring-black/5 overflow-hidden">
+                          {item.children?.map((child) => (
+                            <button
+                              key={child.id}
+                              onClick={() => handleNavClick(child.id, child.action)}
+                              className={`w-full text-left px-4 py-2 text-xs xl:text-[13px] font-medium transition-colors cursor-pointer flex items-center justify-between ${
+                                activeSection === child.id
+                                  ? 'bg-sky-50 text-sky-900 font-semibold border-l-2 border-[#13306d]'
+                                  : 'text-slate-700 hover:bg-slate-50 hover:text-[#13306d]'
+                              }`}
+                            >
+                              <span>{child.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id, item.action)}
+                  className={`px-2.5 xl:px-3 py-1.5 rounded-full text-[13px] xl:text-[13.5px] font-medium transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-[#13306d] text-white font-semibold'
+                      : 'text-[#13306d] hover:text-[#08183a] hover:bg-slate-100/80'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Right Action Buttons: Rojavanam Login & Dews Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Rojavanam Signature Login Button */}
             <button
               onClick={onOpenAdminModal}
-              className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                isAdminLoggedIn
-                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
-                  : 'bg-white text-slate-700 hover:bg-slate-200/70 border border-slate-300'
-              }`}
+              className="nav-login-btn text-xs sm:text-[13px] font-semibold"
+              title={isAdminLoggedIn ? 'Open Admin Control Panel' : 'Staff & Admin Login'}
             >
-              <Shield className="w-3 h-3 text-sky-700" />
-              <span>{isAdminLoggedIn ? 'Admin Panel' : 'Admin Login'}</span>
+              <Shield className="w-3.5 h-3.5 text-[#0a2d69]" />
+              <span className="hidden sm:inline">
+                {isAdminLoggedIn ? 'Admin Panel' : 'Login'}
+              </span>
+              <span className="sm:hidden">Login</span>
+              {enquiryCount > 0 && (
+                <span className="ml-0.5 inline-flex items-center justify-center px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+                  {enquiryCount}
+                </span>
+              )}
+            </button>
+
+            {/* Rojavanam Signature Dews Admission Button */}
+            <button
+              onClick={onOpenAdmissionModal}
+              className="dews-nav-link cursor-pointer text-xs sm:text-[13.5px]"
+              title="Apply for Admission (Dews Wing / K-12)"
+            >
+              <span>Dews</span>
+            </button>
+
+            {/* Mobile Hamburger Menu Toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors focus:outline-hidden"
+              aria-label="Toggle navigation menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6 text-[#13306d]" /> : <Menu className="w-6 h-6 text-[#13306d]" />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Tier 2: Main School Title Banner (Proportional Single-Row Layout) */}
-      <div className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center justify-between gap-4">
-            {/* School Logo + Single-Line Title Banner */}
-            <a
-              href="#home"
-              onClick={(e) => {
-                if (onNavigate) {
-                  e.preventDefault();
-                  onNavigate('home');
-                }
-              }}
-              className="flex items-center gap-3.5 min-w-0 group cursor-pointer"
-            >
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-sky-50/70 p-1 shadow-xs ring-1 ring-sky-200 shrink-0 flex items-center justify-center">
-                <img
-                  src={settings.logo_url || '/logo.png'}
-                  alt={settings.school_name}
-                  className="w-full h-full object-contain rounded-full"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/logo.png';
+      {/* Mobile Drawer (Smooth, non-blocking, scrollable, with backdrop overlay) */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 top-[62px] bg-slate-900/40 backdrop-blur-xs z-30 animate-in fade-in duration-200"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          {/* Drawer Menu */}
+          <div className="relative z-40 bg-white border-t border-slate-200 shadow-2xl max-h-[calc(100vh-62px)] overflow-y-auto px-4 py-4 space-y-3">
+            {/* Quick Actions Header in Mobile Drawer */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Navigation Menu</span>
+              {enquiryCount > 0 && (
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (onOpenAdminEnquiries) onOpenAdminEnquiries();
+                    else onOpenAdminModal();
                   }}
-                />
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase text-sky-700">
-                    {settings.school_motto || 'CENTRE FOR EXCELLENCE'}
-                  </span>
-                  <span className="hidden sm:inline text-slate-300">•</span>
-                  <span className="hidden sm:inline text-xs text-slate-500 font-medium">
-                    Alwarcoil, Kanyakumari District, Tamil Nadu
-                  </span>
-                </div>
-                <h1 className="font-serif-display text-base sm:text-xl md:text-2xl font-bold text-slate-900 tracking-tight leading-snug sm:truncate">
-                  {settings.school_name}
-                </h1>
-              </div>
-            </a>
-
-            {/* Right Action Buttons */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <button
-                onClick={onOpenAdmissionModal}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-semibold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
-              >
-                <GraduationCap className="w-4 h-4" />
-                <span>Admissions Open</span>
-              </button>
-
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
-                aria-label="Toggle Menu"
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200"
+                >
+                  <FileText className="w-3 h-3" />
+                  <span>{enquiryCount} New Forms</span>
+                </button>
+              )}
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Tier 3: Clean Horizontal Desktop Navigation Bar */}
-      <nav className="hidden lg:block bg-slate-50/90 border-t border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-1.5">
-            <div className="flex items-center gap-1">
-              {navLinks.map((link) => {
-                const isActive = (activeSection || 'home') === link.id;
+            {/* Nav list */}
+            <div className="space-y-1">
+              {navItems.map((item) => {
+                const hasChildren = item.children && item.children.length > 0;
+                const isExpanded = mobileExpandedSection === item.id;
+                const isActive =
+                  activeSection === item.id ||
+                  (hasChildren && item.children?.some((c) => c.id === activeSection));
+
+                if (hasChildren) {
+                  return (
+                    <div key={item.id} className="rounded-lg overflow-hidden border border-slate-100 bg-slate-50/50">
+                      <button
+                        onClick={() =>
+                          setMobileExpandedSection(isExpanded ? null : item.id)
+                        }
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-semibold transition-colors ${
+                          isActive ? 'text-[#13306d]' : 'text-slate-800'
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                        <ChevronDown
+                          className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180 text-[#13306d]' : ''
+                          }`}
+                        />
+                      </button>
+
+                      {isExpanded && (
+                        <div className="px-3 pb-2 pt-0.5 space-y-1 bg-white border-t border-slate-100">
+                          {item.children?.map((child) => (
+                            <button
+                              key={child.id}
+                              onClick={() => handleNavClick(child.id, child.action)}
+                              className={`w-full text-left px-3 py-2 rounded-md text-xs font-medium transition-colors flex items-center justify-between ${
+                                activeSection === child.id
+                                  ? 'bg-[#13306d] text-white font-bold'
+                                  : 'text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>{child.label}</span>
+                              <ArrowRight className="w-3 h-3 opacity-60" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
-                  <a
-                    key={link.id}
-                    href={link.href}
-                    onClick={(e) => {
-                      if (onNavigate) {
-                        e.preventDefault();
-                        onNavigate(link.id);
-                      }
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs xl:text-[13px] font-semibold transition-colors whitespace-nowrap cursor-pointer ${
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.id, item.action)}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-between ${
                       isActive
-                        ? 'bg-sky-700 text-white shadow-xs'
-                        : 'text-slate-700 hover:text-sky-800 hover:bg-sky-100/60'
+                        ? 'bg-[#13306d] text-white font-bold'
+                        : 'text-slate-800 hover:bg-slate-100'
                     }`}
                   >
-                    {link.label}
-                  </a>
+                    <span>{item.label}</span>
+                    <ArrowRight className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  </button>
                 );
               })}
             </div>
-            <span className="text-xs font-medium text-slate-500 hidden xl:inline">
-              Vijaya Dasami Admissions: 20 Oct 2026
-            </span>
-          </div>
-        </div>
-      </nav>
 
-      {/* Mobile Navigation Drawer */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-t border-slate-200 px-4 pt-3 pb-4 space-y-2 shadow-lg">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-            {navLinks.map((link) => {
-              const isActive = (activeSection || 'home') === link.id;
-              return (
-                <a
-                  key={link.id}
-                  href={link.href}
-                  onClick={(e) => {
-                    if (onNavigate) {
-                      e.preventDefault();
-                      onNavigate(link.id);
-                    }
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                    isActive
-                      ? 'bg-sky-700 text-white font-bold'
-                      : 'bg-slate-50 hover:bg-sky-50 text-slate-700'
-                  }`}
-                >
-                  {link.label}
-                </a>
-              );
-            })}
+            {/* Mobile Footer Drawer Actions */}
+            <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenAdminModal();
+                }}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <Shield className="w-3.5 h-3.5 text-[#13306d]" />
+                <span>{isAdminLoggedIn ? 'Admin Panel' : 'Admin Login'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenAdmissionModal();
+                }}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-amber-500 text-white text-xs font-bold shadow-xs"
+              >
+                <span>Admission / Dews</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tier 4: Mild & Professional Important News Ticker Below Title Card */}
+      {/* Rojavanam Slim Important News Ticker (Directly below single nav row) */}
       {activeTickers.length > 0 && (
-        <div className="bg-sky-50/90 text-slate-800 border-t border-sky-200/80 overflow-hidden">
-          <div className="max-w-7xl mx-auto flex items-center">
-            <div className="z-10 bg-sky-800 text-white px-3 sm:px-3.5 py-1.5 flex items-center gap-1.5 font-bold text-[11px] sm:text-xs tracking-wide uppercase shrink-0">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <Megaphone className="w-3.5 h-3.5 hidden sm:inline" />
+        <div className="bg-[#0c234b] text-white border-t border-slate-800/20 overflow-hidden shadow-inner">
+          <div className="max-w-7xl mx-auto flex items-center h-[34px]">
+            <div className="z-10 bg-[#e24b4b] text-white px-3 sm:px-3.5 h-full flex items-center gap-1.5 font-bold text-[10.5px] sm:text-xs tracking-wide uppercase shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-yellow-300 animate-pulse" />
+              <Megaphone className="w-3 h-3 hidden sm:inline" />
               <span>Latest News:</span>
             </div>
 
-            <div className="flex-1 overflow-hidden py-1.5 relative">
-              <div className="animate-marquee hover:[animation-play-state:paused] flex items-center gap-6 whitespace-nowrap">
+            <div className="flex-1 overflow-hidden py-1 relative">
+              <div className="animate-marquee hover:[animation-play-state:paused] flex items-center gap-8 whitespace-nowrap">
                 {[...activeTickers, ...activeTickers].map((item, idx) => (
                   <React.Fragment key={`${item.id}-${idx}`}>
                     <button
@@ -262,24 +438,24 @@ export const HeaderAndTicker: React.FC<HeaderAndTickerProps> = ({
                           }
                         }
                       }}
-                      className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 hover:text-sky-800 transition-colors cursor-pointer group"
+                      className="inline-flex items-center gap-2 text-xs font-medium text-slate-100 hover:text-amber-300 transition-colors cursor-pointer group"
                     >
-                      <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200 text-[10px] font-bold uppercase">
+                      <span className="px-1.5 py-0.2 rounded bg-white/15 text-amber-300 border border-amber-300/30 text-[9.5px] font-bold uppercase">
                         {item.tag}
                       </span>
                       <span className="group-hover:underline underline-offset-2">{item.text}</span>
-                      <ArrowRight className="w-3 h-3 text-sky-600 inline" />
+                      <ArrowRight className="w-3 h-3 text-amber-300 inline" />
                     </button>
-                    <span className="text-slate-300 select-none">|</span>
+                    <span className="text-slate-500 select-none">|</span>
                   </React.Fragment>
                 ))}
               </div>
             </div>
 
-            <div className="hidden md:flex items-center px-3 shrink-0 bg-sky-50/95 z-10 border-l border-sky-200/60">
+            <div className="hidden md:flex items-center px-3 shrink-0 h-full bg-[#0c234b] z-10 border-l border-white/10">
               <button
                 onClick={onOpenAdmissionModal}
-                className="px-3 py-1 rounded-md bg-sky-700 hover:bg-sky-800 text-white text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+                className="px-2.5 py-0.5 rounded-full bg-amber-500 hover:bg-amber-400 text-[#0c234b] text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
               >
                 Online Admission →
               </button>

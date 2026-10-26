@@ -2,12 +2,71 @@
 
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
-  h1, h2, h3, .font-serif-display {
-    font-family: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+  h1, h2, h3, h4, h5, h6, .font-serif-display {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.015em;
   }
+}
+
+/* Rojavanam Signature Dews & Login Button Styles */
+.dews-nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: #ffffff !important;
+  font-weight: 700;
+  padding: 0.5rem 0.95rem;
+  border-radius: 9999px;
+  line-height: 1;
+  background: linear-gradient(135deg, #e24b4b 0%, #f0a51f 100%);
+  box-shadow: 0 4px 14px rgba(226, 75, 75, 0.28);
+  transition: all 0.2s ease;
+  font-size: 0.88rem;
+}
+
+.dews-nav-link::before {
+  content: "";
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.42rem;
+  border-radius: 50%;
+  background: #fff8cf;
+  box-shadow: 0 0 0 3px rgba(255, 248, 207, 0.35);
+}
+
+.dews-nav-link:hover {
+  background: linear-gradient(135deg, #cf3232 0%, #e58f13 100%);
+  box-shadow: 0 6px 18px rgba(226, 75, 75, 0.38);
+  transform: translateY(-1px);
+}
+
+.nav-login-btn {
+  text-decoration: none;
+  color: #0a2d69;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.48rem 0.9rem;
+  border-radius: 9999px;
+  border: 1px solid #cfdcf6;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 45, 109, 0.06);
+  line-height: 1;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-login-btn:hover {
+  border-color: #a9c0f0;
+  background: #eef4ff;
+  transform: translateY(-1px);
 }
 
 @keyframes marqueeScroll {
