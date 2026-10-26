@@ -16,6 +16,8 @@ interface HeaderAndTickerProps {
   settings: SchoolSettings;
   tickerItems: TickerItem[];
   enquiryCount?: number;
+  activeSection?: string;
+  onNavigate?: (section: string) => void;
   onOpenAdmissionModal: () => void;
   onOpenAdminModal: () => void;
   onOpenAdminEnquiries?: () => void;
@@ -26,6 +28,8 @@ export const HeaderAndTicker: React.FC<HeaderAndTickerProps> = ({
   settings,
   tickerItems,
   enquiryCount = 0,
+  activeSection = 'home',
+  onNavigate,
   onOpenAdmissionModal,
   onOpenAdminModal,
   onOpenAdminEnquiries,
@@ -36,15 +40,16 @@ export const HeaderAndTicker: React.FC<HeaderAndTickerProps> = ({
   const activeTickers = tickerItems.filter((t) => t.is_active);
 
   const navLinks = [
-    { label: 'About School', href: '#about' },
-    { label: 'Leadership', href: '#leadership' },
-    { label: 'Academics (+1/+2)', href: '#academics' },
-    { label: 'Facilities', href: '#facilities' },
-    { label: 'Activities & Events', href: '#activities' },
-    { label: 'Photo & Video Gallery', href: '#gallery' },
-    { label: 'Notice Board', href: '#notices' },
-    { label: 'Admissions', href: '#admissions' },
-    { label: 'Contact Us', href: '#contact' },
+    { id: 'home', label: 'Home', href: '#home' },
+    { id: 'about', label: 'About School', href: '#about' },
+    { id: 'leadership', label: 'Leadership', href: '#leadership' },
+    { id: 'academics', label: 'Academics (+1/+2)', href: '#academics' },
+    { id: 'facilities', label: 'Facilities', href: '#facilities' },
+    { id: 'activities', label: 'Activities & Events', href: '#activities' },
+    { id: 'gallery', label: 'Gallery', href: '#gallery' },
+    { id: 'notices', label: 'Notice Board', href: '#notices' },
+    { id: 'admissions', label: 'Admissions', href: '#admissions' },
+    { id: 'contact', label: 'Contact Us', href: '#contact' },
   ];
 
   return (
@@ -105,7 +110,16 @@ export const HeaderAndTicker: React.FC<HeaderAndTickerProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between gap-4">
             {/* School Logo + Single-Line Title Banner */}
-            <a href="#" className="flex items-center gap-3.5 min-w-0 group">
+            <a
+              href="#home"
+              onClick={(e) => {
+                if (onNavigate) {
+                  e.preventDefault();
+                  onNavigate('home');
+                }
+              }}
+              className="flex items-center gap-3.5 min-w-0 group cursor-pointer"
+            >
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-sky-50/70 p-1 shadow-xs ring-1 ring-sky-200 shrink-0 flex items-center justify-center">
                 <img
                   src={settings.logo_url || '/logo.png'}
@@ -159,15 +173,28 @@ export const HeaderAndTicker: React.FC<HeaderAndTickerProps> = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-1.5">
             <div className="flex items-center gap-1">
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="px-3 py-1.5 rounded-lg text-xs xl:text-[13px] font-semibold text-slate-700 hover:text-sky-800 hover:bg-sky-100/60 transition-colors whitespace-nowrap"
-                >
-                  {link.label}
-                </a>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = (activeSection || 'home') === link.id;
+                return (
+                  <a
+                    key={link.id}
+                    href={link.href}
+                    onClick={(e) => {
+                      if (onNavigate) {
+                        e.preventDefault();
+                        onNavigate(link.id);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs xl:text-[13px] font-semibold transition-colors whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'bg-sky-700 text-white shadow-xs'
+                        : 'text-slate-700 hover:text-sky-800 hover:bg-sky-100/60'
+                    }`}
+                  >
+                    {link.label}
+                  </a>
+                );
+              })}
             </div>
             <span className="text-xs font-medium text-slate-500 hidden xl:inline">
               Vijaya Dasami Admissions: 20 Oct 2026
@@ -180,16 +207,29 @@ export const HeaderAndTicker: React.FC<HeaderAndTickerProps> = ({
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-t border-slate-200 px-4 pt-3 pb-4 space-y-2 shadow-lg">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 rounded-lg bg-slate-50 hover:bg-sky-50 text-xs font-semibold text-slate-700"
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = (activeSection || 'home') === link.id;
+              return (
+                <a
+                  key={link.id}
+                  href={link.href}
+                  onClick={(e) => {
+                    if (onNavigate) {
+                      e.preventDefault();
+                      onNavigate(link.id);
+                    }
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                    isActive
+                      ? 'bg-sky-700 text-white font-bold'
+                      : 'bg-slate-50 hover:bg-sky-50 text-slate-700'
+                  }`}
+                >
+                  {link.label}
+                </a>
+              );
+            })}
           </div>
         </div>
       )}
@@ -199,42 +239,49 @@ export const HeaderAndTicker: React.FC<HeaderAndTickerProps> = ({
         <div className="bg-sky-50/90 text-slate-800 border-t border-sky-200/80 overflow-hidden">
           <div className="max-w-7xl mx-auto flex items-center">
             <div className="z-10 bg-sky-800 text-white px-3 sm:px-3.5 py-1.5 flex items-center gap-1.5 font-bold text-[11px] sm:text-xs tracking-wide uppercase shrink-0">
-              <span className="h-2 w-2 rounded-full bg-sky-300 animate-pulse" />
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <Megaphone className="w-3.5 h-3.5 hidden sm:inline" />
-              <span>Important News</span>
+              <span>Latest News:</span>
             </div>
 
             <div className="flex-1 overflow-hidden py-1.5 relative">
-              <div className="animate-marquee flex items-center gap-10 whitespace-nowrap">
+              <div className="animate-marquee hover:[animation-play-state:paused] flex items-center gap-6 whitespace-nowrap">
                 {[...activeTickers, ...activeTickers].map((item, idx) => (
-                  <button
-                    key={`${item.id}-${idx}`}
-                    onClick={() => {
-                      if (item.link_section === '#admissions') {
-                        onOpenAdmissionModal();
-                      } else {
-                        const el = document.querySelector(item.link_section);
-                        el?.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 hover:text-sky-800 transition-colors cursor-pointer"
-                  >
-                    <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-900 border border-sky-200 text-[10px] font-bold uppercase">
-                      {item.tag}
-                    </span>
-                    <span>{item.text}</span>
-                    <ArrowRight className="w-3 h-3 text-sky-700" />
-                  </button>
+                  <React.Fragment key={`${item.id}-${idx}`}>
+                    <button
+                      onClick={() => {
+                        if (item.link_section === '#admissions') {
+                          onOpenAdmissionModal();
+                        } else {
+                          const target = item.link_section.replace('#', '');
+                          if (onNavigate) {
+                            onNavigate(target);
+                          } else {
+                            const el = document.querySelector(item.link_section);
+                            el?.scrollIntoView({ behavior: 'smooth' });
+                          }
+                        }
+                      }}
+                      className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 hover:text-sky-800 transition-colors cursor-pointer group"
+                    >
+                      <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200 text-[10px] font-bold uppercase">
+                        {item.tag}
+                      </span>
+                      <span className="group-hover:underline underline-offset-2">{item.text}</span>
+                      <ArrowRight className="w-3 h-3 text-sky-600 inline" />
+                    </button>
+                    <span className="text-slate-300 select-none">|</span>
+                  </React.Fragment>
                 ))}
               </div>
             </div>
 
-            <div className="hidden md:flex items-center px-3 shrink-0 bg-sky-50/95 z-10">
+            <div className="hidden md:flex items-center px-3 shrink-0 bg-sky-50/95 z-10 border-l border-sky-200/60">
               <button
                 onClick={onOpenAdmissionModal}
-                className="px-2.5 py-0.5 rounded-md bg-sky-700 text-white hover:bg-sky-800 text-[11px] font-semibold transition-colors cursor-pointer"
+                className="px-3 py-1 rounded-md bg-sky-700 hover:bg-sky-800 text-white text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
               >
-                Enrol Now →
+                Online Admission →
               </button>
             </div>
           </div>

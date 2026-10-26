@@ -28,6 +28,10 @@ import {
   Play,
   Shield,
   MessageCircle,
+  ChevronLeft,
+  ChevronRight,
+  Megaphone,
+  FileText,
 } from 'lucide-react';
 import {
   SchoolSettings,
@@ -176,6 +180,212 @@ export function App() {
     setAdminModalOpen(true);
   };
 
+  // Active Page / Section Routing State (Mirroring Rojavanam's modular section architecture)
+  const [activeSection, setActiveSection] = useState<string>('home');
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const raw = window.location.hash.replace('#', '').trim().toLowerCase();
+      if (!raw || raw === 'home') {
+        setActiveSection('home');
+        return;
+      }
+      const validSections = [
+        'home',
+        'about',
+        'leadership',
+        'academics',
+        'facilities',
+        'activities',
+        'events',
+        'gallery',
+        'notices',
+        'admissions',
+        'contact',
+      ];
+      if (validSections.includes(raw)) {
+        setActiveSection(raw === 'events' ? 'activities' : raw);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const navigateTo = (sec: string) => {
+    const raw = sec.replace('#', '').trim().toLowerCase();
+    const normalized = raw === 'events' ? 'activities' : raw;
+    setActiveSection(normalized);
+    window.location.hash = normalized === 'home' ? '' : `#${normalized}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Rojavanam-style Hero Media Slider State
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const heroSlides = [
+    {
+      id: 1,
+      image: settings.hero_image_url || '/images/students_event.jpg',
+      badge: settings.popup_badge || 'ADMISSIONS OPEN 2026–2027',
+      kicker: 'WELCOME TO',
+      title: 'Empowering Young Minds with Knowledge, Values & Excellence',
+      subtitle: `Welcome to ${settings.school_name}, Alwarcoil, Kanyakumari District. A Centre for Excellence offering child-centred education from Primary to Higher Secondary.`,
+      primaryBtnText: 'Apply for Admission',
+      primaryAction: () => setAdmissionPopupOpen(true),
+      secondaryBtnText: 'Discover About Us',
+      secondaryAction: () => navigateTo('about'),
+    },
+    {
+      id: 2,
+      image: '/images/sslc_toppers_poster.jpg',
+      badge: 'SSLC 2025–2026 TOPPERS & DISTINCTIONS',
+      kicker: 'ACADEMIC EXCELLENCE',
+      title: 'Hearty Congratulations to our SSLC Board Exam Toppers!',
+      subtitle: 'Celebrating our outstanding 100% board pass track record, nurturing academic rigor and career readiness in science & computer streams.',
+      primaryBtnText: 'Academic Groups (+1 & +2)',
+      primaryAction: () => navigateTo('academics'),
+      secondaryBtnText: 'Photo & Video Gallery',
+      secondaryAction: () => navigateTo('gallery'),
+    },
+    {
+      id: 3,
+      image: settings.popup_banner_url || '/images/students_event.jpg',
+      badge: 'VIJAYA DASAMI SPECIAL ADMISSIONS',
+      kicker: 'SPECIAL ANNOUNCEMENT',
+      title: 'Admissions Open for Primary, High & Higher Secondary Classes',
+      subtitle: 'Mathematics – Computer Science | Mathematics – Biology | Computer Science – Biology. Experience state-of-the-art labs and dedicated coaching.',
+      primaryBtnText: 'Online Admission Form',
+      primaryAction: () => setAdmissionPopupOpen(true),
+      secondaryBtnText: 'Campus Facilities',
+      secondaryAction: () => navigateTo('facilities'),
+    },
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
+
+  // Section Navigation Buttons (Connected to respective sections & Supabase data tables)
+  const sectionJumpItems = [
+    {
+      id: 'about',
+      label: 'About Our School',
+      desc: 'Legacy, Vision & Mission',
+      icon: BookOpen,
+      iconColor: 'text-blue-600 bg-blue-50 border-blue-200',
+      action: () => navigateTo('about'),
+      tag: 'Overview',
+    },
+    {
+      id: 'leadership',
+      label: 'Leadership Desk',
+      desc: 'Correspondent & Principal',
+      icon: Users,
+      iconColor: 'text-teal-600 bg-teal-50 border-teal-200',
+      action: () => navigateTo('leadership'),
+      tag: 'Management',
+    },
+    {
+      id: 'academics',
+      label: 'Academics (+1 / +2)',
+      desc: 'Maths-CS, Bio, CS-Bio',
+      icon: GraduationCap,
+      iconColor: 'text-amber-600 bg-amber-50 border-amber-200',
+      action: () => navigateTo('academics'),
+      tag: '3 Streams',
+    },
+    {
+      id: 'facilities',
+      label: 'Campus Facilities',
+      desc: 'Smart Labs, Sports & Library',
+      icon: Building2,
+      iconColor: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+      action: () => navigateTo('facilities'),
+      tag: '15+ Modern',
+    },
+    {
+      id: 'activities',
+      label: 'Events & Activities',
+      desc: 'Silambam, Yoga, Karate & Clubs',
+      icon: Trophy,
+      iconColor: 'text-orange-600 bg-orange-50 border-orange-200',
+      action: () => navigateTo('activities'),
+      tag: `${events.length} Events`,
+    },
+    {
+      id: 'gallery',
+      label: 'Photo & Video Gallery',
+      desc: 'Campus Life & Celebrations',
+      icon: Play,
+      iconColor: 'text-rose-600 bg-rose-50 border-rose-200',
+      action: () => navigateTo('gallery'),
+      tag: `${gallery.length} Media`,
+    },
+    {
+      id: 'notices',
+      label: 'Digital Notice Board',
+      desc: 'Official School Circulars',
+      icon: Megaphone,
+      iconColor: 'text-sky-600 bg-sky-50 border-sky-200',
+      action: () => navigateTo('notices'),
+      tag: `${notices.length} Notices`,
+    },
+    {
+      id: 'admissions',
+      label: 'Online Admissions',
+      desc: 'Apply for 2026–2027',
+      icon: FileText,
+      iconColor: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+      action: () => navigateTo('admissions'),
+      tag: 'Enrol Now',
+    },
+  ];
+
+  const sectionMeta: Record<string, { title: string; subtitle: string }> = {
+    about: {
+      title: 'About Our Institution',
+      subtitle: 'Legacy, foundational educational ethos, and holistic vision since 1990',
+    },
+    leadership: {
+      title: 'School Leadership & Management',
+      subtitle: 'Visionary guidance and messages from our Correspondent and Principal',
+    },
+    academics: {
+      title: 'Academic Programme & Higher Secondary Streams',
+      subtitle: 'Tamil & English medium curriculum, specialized +1 & +2 groups, and modern teaching aids',
+    },
+    facilities: {
+      title: 'Campus Infrastructure & Facilities',
+      subtitle: 'State-of-the-art science laboratories, computer centre, library, transport, and playgrounds',
+    },
+    activities: {
+      title: "Students' Activities, Events & Achievements",
+      subtitle: 'Co-curricular clubs, annual celebrations, sports meets, and district-level distinctions',
+    },
+    gallery: {
+      title: 'Photo & Video Gallery',
+      subtitle: 'Vibrant glimpses of campus celebrations, academic events, classroom learning, and video features',
+    },
+    notices: {
+      title: 'Digital Notice Board & Circulars',
+      subtitle: 'Official announcements, academic calendars, holiday circulars, and exam notifications',
+    },
+    admissions: {
+      title: 'Online Admissions 2026–2027',
+      subtitle: 'Eligibility criteria, admission procedure, required documents, and online enquiry application',
+    },
+    contact: {
+      title: 'Contact Information & Campus Map',
+      subtitle: 'Direct telephone contacts, official campus location in Alwarcoil, and enquiry desk',
+    },
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
       {/* 1. Sticky School Header + Title Card + Scrolling Important News Ticker */}
@@ -183,407 +393,851 @@ export function App() {
         settings={settings}
         tickerItems={tickerItems}
         enquiryCount={enquiries.length}
+        activeSection={activeSection}
+        onNavigate={navigateTo}
         onOpenAdmissionModal={() => setAdmissionPopupOpen(true)}
         onOpenAdminModal={() => openAdminAtTab('popup')}
         onOpenAdminEnquiries={() => openAdminAtTab('popup')}
         isAdminLoggedIn={isAdminLoggedIn}
       />
 
-      {/* 2. Mild, Welcoming Hero Section */}
-      <section className="relative bg-gradient-to-br from-sky-50/90 via-white to-blue-50/60 text-slate-900 border-b border-slate-200/80 overflow-hidden">
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            {/* Hero Left Copy */}
-            <div className="lg:col-span-7 space-y-5">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-100/80 border border-sky-200 text-sky-900 text-xs font-bold tracking-wide uppercase">
-                <Sparkles className="w-3.5 h-3.5 text-sky-700" />
-                <span>{settings.popup_badge || 'Admissions Open 2026–2027'}</span>
+      {/* Dedicated Section Header Banner (Rendered when viewing a specific section) */}
+      {activeSection !== 'home' && (
+        <div className="bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 text-white py-10 sm:py-12 border-b border-sky-800/40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">
+                  <button
+                    onClick={() => navigateTo('home')}
+                    className="hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <span>Home</span>
+                  </button>
+                  <span>/</span>
+                  <span className="text-amber-300">
+                    {sectionMeta[activeSection]?.title || activeSection}
+                  </span>
+                </div>
+                <h1 className="font-serif-display text-2xl sm:text-4xl font-bold text-white tracking-tight">
+                  {sectionMeta[activeSection]?.title || activeSection}
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
+                  {sectionMeta[activeSection]?.subtitle}
+                </p>
               </div>
 
-              <h2 className="font-serif-display text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 leading-[1.15] tracking-tight">
-                Nurturing Knowledge, Character, Confidence &amp;{' '}
-                <span className="text-sky-700">Excellence</span>
-              </h2>
+              <button
+                onClick={() => navigateTo('home')}
+                className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold border border-white/20 backdrop-blur-sm transition-colors cursor-pointer"
+              >
+                <span>← Back to Home</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl">
-                Welcome to <strong className="text-slate-800">{settings.school_name}</strong>, located at{' '}
-                <strong className="text-slate-800">Alwarcoil, Kanyakumari District, Tamil Nadu</strong>. We provide a safe,
-                caring, and inspiring learning environment from Primary to Higher Secondary levels.
+      {/* 2. Rojavanam-Style Full-Bleed Hero Media Carousel (Rendered on Home) */}
+      {activeSection === 'home' && (
+        <>
+          <section className="relative overflow-hidden bg-slate-950 text-white min-h-[540px] sm:min-h-[620px] lg:min-h-[660px] flex items-center">
+          {/* Carousel Background Images with Cross-Fade */}
+          <div className="absolute inset-0">
+            {heroSlides.map((slide, idx) => (
+              <div
+                key={slide.id}
+                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                  idx === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
+              >
+                <img
+                  src={slide.image}
+                  alt={slide.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/images/students_event.jpg';
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/75 to-slate-900/50" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-slate-950/40" />
+              </div>
+            ))}
+          </div>
+
+          {/* Hero Slider Arrow Navigation */}
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)}
+            className="absolute left-3 sm:left-6 z-20 p-2.5 sm:p-3 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer hover:scale-105"
+            aria-label="Previous Slide"
+          >
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
+          <button
+            onClick={() => setCurrentSlide((prev) => (prev + 1) % heroSlides.length)}
+            className="absolute right-3 sm:right-6 z-20 p-2.5 sm:p-3 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer hover:scale-105"
+            aria-label="Next Slide"
+          >
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
+
+          {/* Hero Slide Content Overlay */}
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24 lg:py-28 w-full">
+            <div className="max-w-3xl space-y-5 sm:space-y-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-400/20 border border-amber-300/40 text-amber-300 text-xs font-bold tracking-wider uppercase backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>{heroSlides[currentSlide].badge}</span>
+              </div>
+
+              <div className="text-sky-300 text-xs sm:text-sm font-bold tracking-widest uppercase">
+                {heroSlides[currentSlide].kicker} {settings.school_name.toUpperCase()}
+              </div>
+
+              <h1 className="font-serif-display text-3xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.12] tracking-tight drop-shadow-md">
+                {heroSlides[currentSlide].title}
+              </h1>
+
+              <p className="text-sm sm:text-lg text-slate-200 leading-relaxed max-w-2xl font-normal drop-shadow-sm">
+                {heroSlides[currentSlide].subtitle}
               </p>
 
-              {/* CTA Buttons */}
-              <div className="flex flex-wrap items-center gap-3.5 pt-1">
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3.5 pt-2 sm:pt-4">
                 <button
-                  onClick={() => setAdmissionPopupOpen(true)}
-                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-semibold text-sm sm:text-base shadow-sm transition-all cursor-pointer"
+                  onClick={heroSlides[currentSlide].primaryAction}
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm sm:text-base shadow-lg transition-transform hover:scale-105 cursor-pointer"
                 >
                   <GraduationCap className="w-5 h-5" />
-                  <span>Apply for Admission</span>
+                  <span>{heroSlides[currentSlide].primaryBtnText}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
-                <a
-                  href="#gallery"
-                  className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold text-sm sm:text-base shadow-2xs transition-all"
+                <button
+                  onClick={heroSlides[currentSlide].secondaryAction}
+                  className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/30 backdrop-blur-md font-semibold text-sm sm:text-base transition-colors cursor-pointer"
                 >
-                  <Play className="w-4 h-4 text-sky-700 fill-sky-700" />
-                  <span>Photo &amp; Video Gallery</span>
-                </a>
+                  <span>{heroSlides[currentSlide].secondaryBtnText}</span>
+                </button>
+
+                {isAdminLoggedIn && (
+                  <button
+                    onClick={() => openAdminAtTab('leadership')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold backdrop-blur-sm border border-white/20 transition-colors cursor-pointer"
+                  >
+                    <span>Edit Hero Picture</span>
+                  </button>
+                )}
               </div>
 
-              {/* Key Institutional Stats Bar */}
-              <div className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-slate-200/80">
-                <div>
-                  <div className="text-xl sm:text-2xl font-bold text-sky-800 font-serif-display">
-                    Primary – +2
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5">Complete K-12 Matriculation</div>
+            {/* Institutional Stats Bar (Matching Rojavanam stats) */}
+            <div className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-white/15">
+              <div>
+                <div className="text-xl sm:text-3xl font-bold text-amber-300 font-serif-display">
+                  1990+
                 </div>
-                <div>
-                  <div className="text-xl sm:text-2xl font-bold text-sky-800 font-serif-display">
-                    3 Groups
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5">Maths-CS, Maths-Bio, CS-Bio</div>
+                <div className="text-xs text-slate-300 mt-0.5">Established Legacy</div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-3xl font-bold text-amber-300 font-serif-display">
+                  100%
                 </div>
-                <div>
-                  <div className="text-xl sm:text-2xl font-bold text-sky-800 font-serif-display">
-                    15+
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5">Modern Campus Facilities</div>
+                <div className="text-xs text-slate-300 mt-0.5">SSLC Pass Record</div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-3xl font-bold text-amber-300 font-serif-display">
+                  3 Groups
                 </div>
-                <div>
-                  <div className="text-xl sm:text-2xl font-bold text-sky-800 font-serif-display">
-                    100%
+                <div className="text-xs text-slate-300 mt-0.5">Maths-CS, Bio, CS-Bio</div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-3xl font-bold text-amber-300 font-serif-display">
+                  15+
+                </div>
+                <div className="text-xs text-slate-300 mt-0.5">Campus Facilities</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Slider Dots Indicator */}
+        <div className="absolute bottom-7 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+          {heroSlides.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentSlide(idx)}
+              className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                idx === currentSlide ? 'w-8 bg-amber-400' : 'w-2.5 bg-white/40 hover:bg-white/70'
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+
+        {/* Rojavanam-Style Curved Wave Bottom Separator */}
+        <div className="absolute bottom-0 left-0 right-0 z-10 overflow-hidden leading-none pointer-events-none">
+          <svg
+            viewBox="0 0 1440 60"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-full h-8 sm:h-12 text-slate-50 fill-current"
+            preserveAspectRatio="none"
+          >
+            <path d="M0,0 C360,55 1080,55 1440,0 L1440,60 L0,60 Z" />
+          </svg>
+        </div>
+      </section>
+
+      {/* 3. Section Quick-Access Action Buttons Hub (Connected to Every Section's Data API) */}
+      <section className="bg-slate-50 pt-2 pb-12 sm:pb-16 border-b border-slate-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 sm:-mt-12 relative z-20">
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl p-4 sm:p-6 shadow-xl border border-slate-200/90">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <span className="text-[11px] font-bold text-sky-700 uppercase tracking-widest">
+                  Quick Navigation Hub
+                </span>
+                <h3 className="font-serif-display font-bold text-base sm:text-lg text-slate-900">
+                  Explore UMA School Campus &amp; Portals
+                </h3>
+              </div>
+              <button
+                onClick={() => setAdmissionPopupOpen(true)}
+                className="self-start sm:self-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                <span>Online Admission 2026–27</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              {sectionJumpItems.map((item) => {
+                const IconComp = item.icon;
+                const cardBody = (
+                  <div className="bg-slate-50/70 hover:bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 hover:border-sky-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between h-full group">
+                    <div>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center border ${item.iconColor} shadow-2xs`}>
+                          <IconComp className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </div>
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 group-hover:bg-sky-50 group-hover:text-sky-700 transition-colors">
+                          {item.tag}
+                        </span>
+                      </div>
+                      <h4 className="font-serif-display font-bold text-xs sm:text-sm text-slate-900 group-hover:text-sky-700 transition-colors leading-snug">
+                        {item.label}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">
+                        {item.desc}
+                      </p>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] font-bold text-sky-700 group-hover:text-sky-800">
+                      <span>View Section</span>
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">Holistic Value Education</div>
+                );
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={item.action}
+                    className="text-left cursor-pointer h-full"
+                  >
+                    {cardBody}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+          {/* Concise Rojavanam-Style About Preview on Home */}
+          <section id="about" className="py-16 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                <div className="lg:col-span-6 space-y-5">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 text-blue-900 text-xs font-extrabold uppercase tracking-widest">
+                    <BookOpen className="w-4 h-4 text-blue-700" />
+                    <span>About Our Institution</span>
+                  </div>
+
+                  <h2 className="font-serif-display text-2xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
+                    Welcome to <span className="text-sky-700">{settings.school_name}</span>
+                  </h2>
+
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md relative group">
+                    <img
+                      src={settings.hero_image_url || '/images/students_event.jpg'}
+                      alt="UMA School Campus"
+                      className="w-full h-56 sm:h-64 object-cover group-hover:scale-102 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex flex-col justify-end p-5 text-white">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                        {settings.school_motto || 'CENTRE FOR EXCELLENCE'}
+                      </span>
+                      <h4 className="font-serif-display text-sm sm:text-base font-bold">
+                        Inspiring Young Minds in Alwarcoil, Kanyakumari
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                      <b className="block text-xl font-extrabold text-sky-800 font-serif-display">1990+</b>
+                      <small className="text-xs text-slate-600 font-medium">Established</small>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                      <b className="block text-xl font-extrabold text-sky-800 font-serif-display">1500+</b>
+                      <small className="text-xs text-slate-600 font-medium">Students</small>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                      <b className="block text-xl font-extrabold text-sky-800 font-serif-display">40+</b>
+                      <small className="text-xs text-slate-600 font-medium">Educators</small>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                      <b className="block text-xl font-extrabold text-sky-800 font-serif-display">100%</b>
+                      <small className="text-xs text-slate-600 font-medium">SSLC Pass</small>
+                    </div>
+                  </div>
+
+                  <p className="text-slate-700 text-sm sm:text-base leading-relaxed">
+                    {ABOUT_SCHOOL_PARAGRAPHS[0]}
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <button
+                      onClick={() => navigateTo('about')}
+                      className="px-5 py-2.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 cursor-pointer transition-colors shadow-xs"
+                    >
+                      <span>Read Full School Story &amp; Leadership</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => navigateTo('academics')}
+                      className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs sm:text-sm inline-flex items-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <span>Explore Academics &amp; Streams</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-6 space-y-6">
+                  {/* Vision Card */}
+                  <div className="p-6 sm:p-7 rounded-3xl bg-amber-50 border border-amber-200/80 shadow-md">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shadow">
+                        <Compass className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-serif-display text-xl font-extrabold text-slate-900">
+                        Our Vision
+                      </h3>
+                    </div>
+                    <p className="text-slate-800 text-sm sm:text-base leading-relaxed font-medium">
+                      {SCHOOL_VISION}
+                    </p>
+                  </div>
+
+                  {/* Mission Card */}
+                  <div className="p-6 sm:p-7 rounded-3xl bg-slate-900 text-white shadow-xl border border-slate-800">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-2xl bg-sky-500 text-slate-950 flex items-center justify-center shadow">
+                        <Target className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-serif-display text-xl font-extrabold text-white">
+                        Our Mission
+                      </h3>
+                    </div>
+                    <ul className="space-y-2.5">
+                      {SCHOOL_MISSION_POINTS.slice(0, 3).map((point, idx) => (
+                        <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-200">
+                          <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Quick Contacts Bar */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-100 flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-sky-900">Correspondent: {settings.correspondent_name}</div>
+                        <div className="text-sky-700 font-semibold">{settings.correspondent_phone}</div>
+                      </div>
+                      <a
+                        href={`tel:${settings.correspondent_phone.replace(/\s+/g, '')}`}
+                        className="p-2 rounded-xl bg-sky-700 text-white hover:bg-sky-800 transition-colors"
+                        title="Call Correspondent"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-100 flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-teal-900">Principal: {settings.principal_name}</div>
+                        <div className="text-teal-700 font-semibold">{settings.principal_phone}</div>
+                      </div>
+                      <a
+                        href={`tel:${settings.principal_phone.replace(/\s+/g, '')}`}
+                        className="p-2 rounded-xl bg-teal-700 text-white hover:bg-teal-800 transition-colors"
+                        title="Call Principal"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+          </section>
 
-            {/* Hero Right Emblem & Vijaya Dasami Spotlight Card */}
-            <div className="lg:col-span-5">
-              <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-lg relative">
-                <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
-                  <div className="w-16 h-16 rounded-full bg-sky-50 p-1 ring-2 ring-sky-200 shadow-xs shrink-0">
-                    <img
-                      src={settings.logo_url || '/logo.png'}
-                      alt={settings.school_name}
-                      className="w-full h-full object-contain rounded-full"
-                    />
-                  </div>
+          {/* Concise Highlights Grid on Home */}
+          <section className="py-14 bg-slate-50 border-t border-slate-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center max-w-2xl mx-auto mb-10">
+                <span className="text-xs font-extrabold uppercase tracking-widest text-sky-700">
+                  Campus Updates &amp; Highlights
+                </span>
+                <h3 className="font-serif-display text-2xl sm:text-3xl font-bold text-slate-900 mt-1">
+                  Latest From UMA Matric School
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* 1. Latest Notices Preview */}
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
                   <div>
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-sky-700">
-                      {settings.school_motto}
-                    </span>
-                    <h3 className="font-serif-display text-lg font-bold text-slate-900 leading-snug">
-                      {settings.school_name}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Alwarcoil, Neyyoor Post, Kanyakumari District – 629802
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <h4 className="font-serif-display font-bold text-slate-900 text-base">Digital Notice Board</h4>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[10px] font-bold">
+                        {notices.length} Notices
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {notices.slice(0, 2).map((n) => (
+                        <div key={n.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                          <div className="text-[10px] font-bold text-sky-700 uppercase">{n.category} • {n.date}</div>
+                          <div className="text-xs font-bold text-slate-900 mt-1 line-clamp-1">{n.title}</div>
+                          <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{n.content}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigateTo('notices')}
+                    className="mt-5 w-full py-2.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>View All Notices &amp; Circulars</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* 2. Upcoming Events Preview */}
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-amber-500" />
+                        <h4 className="font-serif-display font-bold text-slate-900 text-base">Events &amp; Activities</h4>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                        {events.length} Events
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {events.slice(0, 2).map((ev) => (
+                        <div key={ev.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-3">
+                          <img
+                            src={ev.image_url || '/images/students_event.jpg'}
+                            alt={ev.title}
+                            className="w-12 h-12 rounded-lg object-cover shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-bold text-amber-600">{ev.date}</div>
+                            <div className="text-xs font-bold text-slate-900 truncate">{ev.title}</div>
+                            <div className="text-[11px] text-slate-500 truncate">{ev.description}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigateTo('activities')}
+                    className="mt-5 w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>View All Activities &amp; Events</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* 3. Media Gallery Preview */}
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Play className="w-4 h-4 text-rose-500" />
+                        <h4 className="font-serif-display font-bold text-slate-900 text-base">Campus Gallery</h4>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
+                        {gallery.length} Media
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {gallery.slice(0, 4).map((g) => (
+                        <div key={g.id} className="relative rounded-xl overflow-hidden h-16 bg-slate-100">
+                          <img src={g.media_url} alt={g.title} className="w-full h-full object-cover" />
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-bold uppercase">
+                            {g.media_type}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigateTo('gallery')}
+                    className="mt-5 w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Open Photo &amp; Video Gallery</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      {/* Dedicated Section View: About School */}
+      {activeSection === 'about' && (
+        <>
+          <section id="about" className="py-20 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+                {/* Left Column: About Media Card & Quick Contact Spotlight */}
+                <div className="lg:col-span-6 space-y-6">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 text-blue-900 text-xs font-extrabold uppercase tracking-widest">
+                    <BookOpen className="w-4 h-4 text-blue-700" />
+                    <span>About Our Institution</span>
+                  </div>
+
+                  <h2 className="font-serif-display text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
+                    Welcome to <span className="text-sky-700">{settings.school_name}</span>
+                  </h2>
+
+                  {/* Rojavanam-Style About Media Card with Image & Badges */}
+                  <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-md relative group">
+                    <img
+                      src={settings.hero_image_url || '/images/students_event.jpg'}
+                      alt="UMA School Campus"
+                      className="w-full h-64 sm:h-72 object-cover group-hover:scale-102 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex flex-col justify-end p-5 text-white">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                            {settings.school_motto || 'CENTRE FOR EXCELLENCE'}
+                          </span>
+                          <h4 className="font-serif-display text-base sm:text-lg font-bold">
+                            Inspiring Young Minds in Alwarcoil
+                          </h4>
+                        </div>
+                        {isAdminLoggedIn && (
+                          <button
+                            onClick={() => openAdminAtTab('leadership')}
+                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white/20 hover:bg-sky-600 text-white backdrop-blur-xs transition-colors cursor-pointer"
+                          >
+                            Update Photo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 Stats Cards matching rojavanam */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                      <b className="block text-xl sm:text-2xl font-extrabold text-sky-800 font-serif-display">1990+</b>
+                      <small className="text-xs text-slate-600 font-medium">Established</small>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                      <b className="block text-xl sm:text-2xl font-extrabold text-sky-800 font-serif-display">1500+</b>
+                      <small className="text-xs text-slate-600 font-medium">Students</small>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                      <b className="block text-xl sm:text-2xl font-extrabold text-sky-800 font-serif-display">40+</b>
+                      <small className="text-xs text-slate-600 font-medium">Educators</small>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                      <b className="block text-xl sm:text-2xl font-extrabold text-sky-800 font-serif-display">100%</b>
+                      <small className="text-xs text-slate-600 font-medium">SSLC Pass</small>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 text-slate-700 text-sm sm:text-base leading-relaxed">
+                    {ABOUT_SCHOOL_PARAGRAPHS.map((para, idx) => (
+                      <p key={idx}>{para}</p>
+                    ))}
+                  </div>
+
+                  {/* Quick Contacts Bar */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                    <div className="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-100 flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-sky-900">Correspondent: {settings.correspondent_name}</div>
+                        <div className="text-sky-700 font-semibold">{settings.correspondent_phone}</div>
+                      </div>
+                      <a
+                        href={`tel:${settings.correspondent_phone.replace(/\s+/g, '')}`}
+                        className="p-2 rounded-xl bg-sky-700 text-white hover:bg-sky-800 transition-colors"
+                        title="Call Correspondent"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-100 flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-teal-900">Principal: {settings.principal_name}</div>
+                        <div className="text-teal-700 font-semibold">{settings.principal_phone}</div>
+                      </div>
+                      <a
+                        href={`tel:${settings.principal_phone.replace(/\s+/g, '')}`}
+                        className="p-2 rounded-xl bg-teal-700 text-white hover:bg-teal-800 transition-colors"
+                        title="Call Principal"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-gradient-to-r from-[#0a1931] to-[#16325e] text-white shadow-lg border-l-4 border-amber-400">
+                    <p className="font-serif-display italic text-base sm:text-lg text-amber-200">
+                      &ldquo;At UMA Matric Higher Secondary School, we envision an educational journey
+                      where every student is inspired to learn, achieve, lead and make a positive
+                      difference in society.&rdquo;
                     </p>
                   </div>
                 </div>
 
-                {/* Hero Banner Photo (Modifiable by Admin) */}
-                <div className="mt-4 rounded-2xl overflow-hidden border border-slate-200 relative group shadow-2xs">
-                  <img
-                    src={settings.hero_image_url || '/images/students_event.jpg'}
-                    alt="Campus Life at UMA Matric Higher Secondary School"
-                    className="w-full h-44 object-cover group-hover:scale-102 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent flex items-end justify-between p-3 text-white">
-                    <span className="text-[11px] font-bold tracking-wide">
-                      Campus Life &amp; Student Excellence
-                    </span>
-                    <button
-                      onClick={() => openAdminAtTab('leadership')}
-                      className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white/20 hover:bg-sky-600 text-white backdrop-blur-xs transition-colors cursor-pointer"
-                      title="Admin: Change Hero Picture"
-                    >
-                      Update Picture
-                    </button>
-                  </div>
-                </div>
-
-                <div className="py-4 space-y-3.5">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 text-sky-900 text-xs font-bold">
-                    <Calendar className="w-3.5 h-3.5 text-sky-700" />
-                    <span>{settings.popup_title}</span>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                    {settings.popup_subtitle}
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
-                      <div className="font-bold text-sky-800">Correspondent</div>
-                      <div className="text-slate-800 font-semibold mt-0.5">
-                        {settings.correspondent_name}
+                {/* Right Column: Our Vision & Our Mission */}
+                <div className="lg:col-span-6 space-y-6">
+                  {/* Vision Card */}
+                  <div className="p-7 sm:p-8 rounded-3xl bg-amber-50 border border-amber-200/80 shadow-md">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-11 h-11 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shadow">
+                        <Compass className="w-6 h-6" />
                       </div>
-                      <a
-                        href={`tel:${settings.correspondent_phone.replace(/\s+/g, '')}`}
-                        className="text-sky-700 font-bold mt-1 inline-block"
-                      >
-                        📞 {settings.correspondent_phone}
-                      </a>
+                      <h3 className="font-serif-display text-2xl font-extrabold text-slate-900">
+                        Our Vision
+                      </h3>
                     </div>
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
-                      <div className="font-bold text-teal-800">Principal</div>
-                      <div className="text-slate-800 font-semibold mt-0.5">
-                        {settings.principal_name}
+                    <p className="text-slate-800 text-base leading-relaxed font-medium">
+                      {SCHOOL_VISION}
+                    </p>
+                  </div>
+
+                  {/* Mission Card */}
+                  <div className="p-7 sm:p-8 rounded-3xl bg-slate-900 text-white shadow-xl border border-slate-800">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="w-11 h-11 rounded-2xl bg-sky-500 text-slate-950 flex items-center justify-center shadow">
+                        <Target className="w-6 h-6" />
                       </div>
-                      <a
-                        href={`tel:${settings.principal_phone.replace(/\s+/g, '')}`}
-                        className="text-sky-700 font-bold mt-1 inline-block"
-                      >
-                        📞 {settings.principal_phone}
-                      </a>
+                      <h3 className="font-serif-display text-2xl font-extrabold text-white">
+                        Our Mission
+                      </h3>
                     </div>
+                    <ul className="space-y-3">
+                      {SCHOOL_MISSION_POINTS.map((point, idx) => (
+                        <li key={idx} className="flex items-start gap-3 text-sm sm:text-base text-slate-200">
+                          <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-
-                <button
-                  onClick={() => setAdmissionPopupOpen(true)}
-                  className="w-full py-3 px-6 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-semibold text-sm shadow-xs transition-all cursor-pointer"
-                >
-                  Open Online Admission Form →
-                </button>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* 3. About Our School, Vision & Mission Section (PDF Pages 1, 2, 3) */}
-      <section id="about" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-            {/* Left Column: About Our School */}
-            <div className="lg:col-span-6 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 text-blue-900 text-xs font-extrabold uppercase tracking-widest">
-                <BookOpen className="w-4 h-4 text-blue-700" />
-                <span>About Our Institution</span>
-              </div>
+          {/* Leadership Section */}
+          <LeadershipSection
+            settings={settings}
+            onEditInAdmin={() => openAdminAtTab('leadership')}
+          />
+        </>
+      )}
 
-              <h2 className="font-serif-display text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
-                Committed to Holistic Education &amp; Responsible Citizenship
-              </h2>
+      {/* Dedicated Section View: Leadership */}
+      {activeSection === 'leadership' && (
+        <LeadershipSection
+          settings={settings}
+          onEditInAdmin={() => openAdminAtTab('leadership')}
+        />
+      )}
 
-              <div className="space-y-4 text-slate-700 text-base leading-relaxed">
-                {ABOUT_SCHOOL_PARAGRAPHS.map((para, idx) => (
-                  <p key={idx}>{para}</p>
-                ))}
-              </div>
-
-              <div className="p-6 rounded-2xl bg-gradient-to-r from-[#0a1931] to-[#16325e] text-white shadow-lg border-l-4 border-amber-400">
-                <p className="font-serif-display italic text-base sm:text-lg text-amber-200">
-                  &ldquo;At UMA Matric Higher Secondary School, we envision an educational journey
-                  where every student is inspired to learn, achieve, lead and make a positive
-                  difference in society.&rdquo;
-                </p>
-              </div>
-            </div>
-
-            {/* Right Column: Our Vision & Our Mission */}
-            <div className="lg:col-span-6 space-y-6">
-              {/* Vision Card */}
-              <div className="p-7 sm:p-8 rounded-3xl bg-amber-50 border border-amber-200/80 shadow-md">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-11 h-11 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shadow">
-                    <Compass className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-serif-display text-2xl font-extrabold text-slate-900">
-                    Our Vision
-                  </h3>
-                </div>
-                <p className="text-slate-800 text-base leading-relaxed font-medium">
-                  {SCHOOL_VISION}
-                </p>
-              </div>
-
-              {/* Mission Card */}
-              <div className="p-7 sm:p-8 rounded-3xl bg-slate-900 text-white shadow-xl border border-slate-800">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-11 h-11 rounded-2xl bg-sky-500 text-slate-950 flex items-center justify-center shadow">
-                    <Target className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-serif-display text-2xl font-extrabold text-white">
-                    Our Mission
-                  </h3>
-                </div>
-                <ul className="space-y-3">
-                  {SCHOOL_MISSION_POINTS.map((point, idx) => (
-                    <li key={idx} className="flex items-start gap-3 text-sm sm:text-base text-slate-200">
-                      <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                      <span>{point}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. Leadership Messages & Portraits (Correspondent & Principal) */}
-      <LeadershipSection
-        settings={settings}
-        onEditInAdmin={() => openAdminAtTab('leadership')}
-      />
-
-      {/* 5. Digital Notice Board & News Announcements (PDF Page 8) */}
-      <NoticeBoardSection
-        notices={notices}
-        onOpenAdminNotices={() => openAdminAtTab('notices')}
-        onOpenAdmissionModal={() => setAdmissionPopupOpen(true)}
-      />
+      {/* Dedicated Section View: Digital Notice Board */}
+      {activeSection === 'notices' && (
+        <NoticeBoardSection
+          notices={notices}
+          onOpenAdminNotices={() => openAdminAtTab('notices')}
+          onOpenAdmissionModal={() => setAdmissionPopupOpen(true)}
+        />
+      )}
 
       {/* 6. Academic Information, Highlights & Higher Secondary Departments (PDF Pages 3 & 4) */}
-      <section id="academics" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-100 text-blue-900 text-xs font-extrabold uppercase tracking-widest mb-3">
-              <GraduationCap className="w-4 h-4 text-blue-700" />
-              <span>Structured Child-Centred Curriculum</span>
-            </div>
-            <h2 className="font-serif-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900">
-              Academic Programme &amp; Departments
-            </h2>
-            <p className="mt-3 text-slate-600 text-base sm:text-lg">
-              {ACADEMIC_OVERVIEW.programme}
-            </p>
-          </div>
-
-          {/* 10 Academic Highlights Grid */}
-          <div className="mb-16 bg-slate-50 rounded-3xl p-6 sm:p-10 border border-slate-200">
-            <h3 className="font-serif-display text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2.5">
-              <Award className="w-6 h-6 text-amber-600" />
-              <span>Key Academic Highlights</span>
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {ACADEMIC_OVERVIEW.highlights.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs"
-                >
-                  <span className="w-7 h-7 rounded-full bg-[#0a1931] text-amber-300 font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                    {idx + 1}
-                  </span>
-                  <span className="text-slate-800 font-medium text-sm sm:text-base">{item}</span>
-                </div>
-              ))}
-            </div>
-            <p className="mt-6 text-center text-sm sm:text-base font-bold text-[#0a1931] bg-amber-100/70 py-3 px-4 rounded-xl">
-              {ACADEMIC_OVERVIEW.aim}
-            </p>
-          </div>
-
-          {/* Higher Secondary (+1 & +2) Academic Groups */}
-          <div>
-            <div className="text-center max-w-2xl mx-auto mb-10">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-amber-600">
-                Higher Secondary Section (Std XI &amp; XII)
-              </span>
-              <h3 className="font-serif-display text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-                Higher Secondary Departments &amp; Academic Groups
-              </h3>
-              <p className="text-sm text-slate-600 mt-1">
-                Our Higher Secondary section offers the following specialized academic groups:
+      {activeSection === 'academics' && (
+        <section id="academics" className="py-20 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-14">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-100 text-blue-900 text-xs font-extrabold uppercase tracking-widest mb-3">
+                <GraduationCap className="w-4 h-4 text-blue-700" />
+                <span>Structured Child-Centred Curriculum</span>
+              </div>
+              <h2 className="font-serif-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900">
+                Academic Programme &amp; Departments
+              </h2>
+              <p className="mt-3 text-slate-600 text-base sm:text-lg">
+                {ACADEMIC_OVERVIEW.programme}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {HIGHER_SECONDARY_GROUPS.map((grp) => (
-                <div
-                  key={grp.number}
-                  className="rounded-3xl bg-white border border-slate-200 shadow-xl overflow-hidden flex flex-col justify-between hover:-translate-y-1 transition-transform"
-                >
-                  <div>
-                    <div className={`bg-gradient-to-r ${grp.color} text-white p-6`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="px-3 py-1 rounded-full bg-white/20 text-xs font-extrabold uppercase tracking-wider">
-                          Group {grp.number}
-                        </span>
-                        <GraduationCap className="w-6 h-6 text-amber-300" />
+            {/* 10 Academic Highlights Grid */}
+            <div className="mb-16 bg-slate-50 rounded-3xl p-6 sm:p-10 border border-slate-200">
+              <h3 className="font-serif-display text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2.5">
+                <Award className="w-6 h-6 text-amber-600" />
+                <span>Key Academic Highlights</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {ACADEMIC_OVERVIEW.highlights.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs"
+                  >
+                    <span className="w-7 h-7 rounded-full bg-[#0a1931] text-amber-300 font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span className="text-slate-800 font-medium text-sm sm:text-base">{item}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-6 text-center text-sm sm:text-base font-bold text-[#0a1931] bg-amber-100/70 py-3 px-4 rounded-xl">
+                {ACADEMIC_OVERVIEW.aim}
+              </p>
+            </div>
+
+            {/* Higher Secondary (+1 & +2) Academic Groups */}
+            <div>
+              <div className="text-center max-w-2xl mx-auto mb-10">
+                <span className="text-xs font-extrabold uppercase tracking-widest text-amber-600">
+                  Higher Secondary Section (Std XI &amp; XII)
+                </span>
+                <h3 className="font-serif-display text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
+                  Higher Secondary Departments &amp; Academic Groups
+                </h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  Our Higher Secondary section offers the following specialized academic groups:
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {HIGHER_SECONDARY_GROUPS.map((grp) => (
+                  <div
+                    key={grp.number}
+                    className="rounded-3xl bg-white border border-slate-200 shadow-xl overflow-hidden flex flex-col justify-between hover:-translate-y-1 transition-transform"
+                  >
+                    <div>
+                      <div className={`bg-gradient-to-r ${grp.color} text-white p-6`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="px-3 py-1 rounded-full bg-white/20 text-xs font-extrabold uppercase tracking-wider">
+                            Group {grp.number}
+                          </span>
+                          <GraduationCap className="w-6 h-6 text-amber-300" />
+                        </div>
+                        <h4 className="font-serif-display text-2xl font-extrabold text-white">
+                          {grp.title}
+                        </h4>
+                        <p className="text-xs text-white/90 font-medium mt-1">{grp.code}</p>
                       </div>
-                      <h4 className="font-serif-display text-2xl font-extrabold text-white">
-                        {grp.title}
-                      </h4>
-                      <p className="text-xs text-white/90 font-medium mt-1">{grp.code}</p>
+
+                      <div className="p-6 space-y-4">
+                        <p className="text-slate-700 text-sm sm:text-base leading-relaxed">
+                          {grp.description}
+                        </p>
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                          <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+                            Future Pathways
+                          </div>
+                          <div className="text-xs font-bold text-slate-800 mt-0.5">
+                            {grp.careerPaths}
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="p-6 space-y-4">
-                      <p className="text-slate-700 text-sm sm:text-base leading-relaxed">
-                        {grp.description}
-                      </p>
-                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
-                        <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                          Future Pathways
-                        </div>
-                        <div className="text-xs font-bold text-slate-800 mt-0.5">
-                          {grp.careerPaths}
-                        </div>
-                      </div>
+                    <div className="px-6 pb-6">
+                      <button
+                        onClick={() => setAdmissionPopupOpen(true)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-amber-500 text-white hover:text-slate-950 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
+                      >
+                        Enquire for {grp.title} →
+                      </button>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
-                  <div className="px-6 pb-6">
-                    <button
-                      onClick={() => setAdmissionPopupOpen(true)}
-                      className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-amber-500 text-white hover:text-slate-950 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
-                    >
-                      Enquire for {grp.title} →
-                    </button>
+      {/* 7. School Facilities Section (PDF Page 4) */}
+      {activeSection === 'facilities' && (
+        <section id="facilities" className="py-20 bg-slate-100 border-t border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-14">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-100 text-amber-900 text-xs font-extrabold uppercase tracking-widest mb-3">
+                <Building2 className="w-4 h-4 text-amber-700" />
+                <span>Supportive &amp; Student-Friendly Campus</span>
+              </div>
+              <h2 className="font-serif-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900">
+                World-Class School Facilities
+              </h2>
+              <p className="mt-3 text-slate-600 text-base sm:text-lg">
+                UMA Matric Higher Secondary School provides a supportive and student-friendly environment with facilities designed to promote effective learning and the overall development of students.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {SCHOOL_FACILITIES.map((fac, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm hover:shadow-md hover:border-amber-400 transition-all flex items-start gap-4"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#0a1931] flex items-center justify-center shrink-0 shadow">
+                    <FacilityIcon name={fac.icon} />
+                  </div>
+                  <div>
+                    <h3 className="font-serif-display font-bold text-lg text-slate-900">
+                      {fac.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+                      {fac.description}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* 7. School Facilities Section (PDF Page 4) */}
-      <section id="facilities" className="py-20 bg-slate-100 border-t border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-100 text-amber-900 text-xs font-extrabold uppercase tracking-widest mb-3">
-              <Building2 className="w-4 h-4 text-amber-700" />
-              <span>Supportive &amp; Student-Friendly Campus</span>
-            </div>
-            <h2 className="font-serif-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900">
-              World-Class School Facilities
-            </h2>
-            <p className="mt-3 text-slate-600 text-base sm:text-lg">
-              UMA Matric Higher Secondary School provides a supportive and student-friendly environment with facilities designed to promote effective learning and the overall development of students.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {SCHOOL_FACILITIES.map((fac, idx) => (
-              <div
-                key={idx}
-                className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm hover:shadow-md hover:border-amber-400 transition-all flex items-start gap-4"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-[#0a1931] flex items-center justify-center shrink-0 shadow">
-                  <FacilityIcon name={fac.icon} />
-                </div>
-                <div>
-                  <h3 className="font-serif-display font-bold text-lg text-slate-900">
-                    {fac.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
-                    {fac.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 8. Students' Activities, Achievements & Annual Events (PDF Pages 4, 5, 6) */}
-      <section id="activities" className="py-20 bg-white">
+      {activeSection === 'activities' && (
+        <section id="activities" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-extrabold uppercase tracking-widest mb-3">
@@ -780,24 +1434,28 @@ export function App() {
               </div>
             </div>
 
-            <a
-              href="#gallery"
-              className="shrink-0 px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm shadow-lg transition-all"
+            <button
+              onClick={() => navigateTo('gallery')}
+              className="shrink-0 px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm shadow-lg transition-all cursor-pointer"
             >
               View Achievements Gallery →
-            </a>
+            </button>
           </div>
         </div>
       </section>
+      )}
 
       {/* 9. Photo & Video Gallery Section */}
-      <GallerySection
-        galleryItems={gallery}
-        onOpenAdminGallery={() => openAdminAtTab('gallery')}
-      />
+      {activeSection === 'gallery' && (
+        <GallerySection
+          galleryItems={gallery}
+          onOpenAdminGallery={() => openAdminAtTab('gallery')}
+        />
+      )}
 
       {/* 10. Admission Details, Process & Documents Required (PDF Pages 6 & 7) */}
-      <section id="admissions" className="py-20 bg-gradient-to-b from-amber-50/60 to-white">
+      {activeSection === 'admissions' && (
+        <section id="admissions" className="py-20 bg-gradient-to-b from-amber-50/60 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500 text-slate-950 text-xs font-extrabold uppercase tracking-widest mb-3 shadow-xs">
@@ -906,6 +1564,7 @@ export function App() {
           </div>
         </div>
       </section>
+      )}
 
       {/* 11. Contact Us & Location Section (PDF Pages 7 & 8) */}
       <section id="contact" className="py-20 bg-slate-950 text-white border-t border-slate-800">
@@ -1016,8 +1675,31 @@ export function App() {
             </div>
           </div>
 
+          {/* Quick Footer Section Nav Links */}
+          <div className="mt-12 pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-2 text-xs text-slate-400">
+            <button onClick={() => navigateTo('home')} className="hover:text-white transition-colors cursor-pointer">Home</button>
+            <span className="text-slate-600">•</span>
+            <button onClick={() => navigateTo('about')} className="hover:text-white transition-colors cursor-pointer">About School</button>
+            <span className="text-slate-600">•</span>
+            <button onClick={() => navigateTo('leadership')} className="hover:text-white transition-colors cursor-pointer">Leadership</button>
+            <span className="text-slate-600">•</span>
+            <button onClick={() => navigateTo('academics')} className="hover:text-white transition-colors cursor-pointer">Academics (+1/+2)</button>
+            <span className="text-slate-600">•</span>
+            <button onClick={() => navigateTo('facilities')} className="hover:text-white transition-colors cursor-pointer">Facilities</button>
+            <span className="text-slate-600">•</span>
+            <button onClick={() => navigateTo('activities')} className="hover:text-white transition-colors cursor-pointer">Activities &amp; Events</button>
+            <span className="text-slate-600">•</span>
+            <button onClick={() => navigateTo('gallery')} className="hover:text-white transition-colors cursor-pointer">Photo &amp; Video Gallery</button>
+            <span className="text-slate-600">•</span>
+            <button onClick={() => navigateTo('notices')} className="hover:text-white transition-colors cursor-pointer">Notice Board</button>
+            <span className="text-slate-600">•</span>
+            <button onClick={() => navigateTo('admissions')} className="hover:text-white transition-colors cursor-pointer">Admissions</button>
+            <span className="text-slate-600">•</span>
+            <button onClick={() => navigateTo('contact')} className="hover:text-white transition-colors cursor-pointer">Contact Us</button>
+          </div>
+
           {/* Footer Bottom */}
-          <div className="mt-16 pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+          <div className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
             <div className="flex items-center gap-3">
               <img
                 src={settings.logo_url || '/logo.png'}
